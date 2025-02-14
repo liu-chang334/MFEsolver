@@ -4,8 +4,10 @@
             "name": "Win32",
             "includePath": [
                 "${workspaceFolder}/**", // 包含工作区所有子目录
-                "C://FEsolvercxxlib//eigen-3.4.0", // 添加 Eigen 的头文件路径
-                "C://FEsolvercxxlib//vtk_install//include//vtk-9.4"
+                //"C://FEsolvercxxlib//eigen-3.4.0", // 添加 Eigen 的头文件路径
+                "F://3rd//eigen-3.4.0",
+                //"C://FEsolvercxxlib//vtk_install//include//vtk-9.4"
+                "F://3rd//install//include//vtk-9.4"
             ],
             "defines": [
                 "_DEBUG",
@@ -14,7 +16,9 @@
             ],
             "cStandard": "c17",
             "cppStandard": "c++17",
-            "intelliSenseMode": "windows-gcc-x64" // 根据编译器调整
+            //"intelliSenseMode": "windows-gcc-x64" // 根据编译器调整
+            "intelliSenseMode": "windows-msvc-x64",
+            "configurationProvider": "ms-vscode.cmake-tools"
         }
     ],
     "version": 4

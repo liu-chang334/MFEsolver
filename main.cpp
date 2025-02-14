@@ -11,9 +11,10 @@ VTK_MODULE_INIT(vtkInteractionStyle);
 int main()
 {
     // read FEM data from inp
-    std::filesystem::path filefolder1 = "D:/liuchang/FEsolvercxx/abaqus";
+    // get the path of the project folder
+    std::string filefolder1 = std::filesystem::current_path().string(); 
     std::string filename1 = "dogbone.inp";
-    std::filesystem::path filepath1 = filefolder1 / filename1;
+    std::filesystem::path filepath1 = filefolder1 + "\\.." + "\\.." + "\\abaqus" + "\\" + filename1;
     FiniteElementModel feaModel;
     ABAQUSFEMReader(filepath1, feaModel);
 
@@ -24,7 +25,7 @@ int main()
     feaSolver.solve();
 
     // save the results
-    std::string filefolder2 = "D:/liuchang/FEsolvercxx/FEoutput";
+    std::string filefolder2 = filefolder1 + "\\.." + "\\.." + "\\FEoutput";
     saveMatrix2TXT(feaSolver.K, filefolder2, (std::string)"K.txt", 5);
     // saveMatrix2TXT(feaSolver.F, filefolder2, (std::string)"F.txt", 15);
     saveMatrix2TXT(feaSolver.U, filefolder2, (std::string)"U.txt", 15);

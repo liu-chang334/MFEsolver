@@ -90,7 +90,7 @@ void FiniteElementSolver::assembleForceVector()
 void FiniteElementSolver::applyBoundaryConditions()
 {
     long double big_num = 1e8;
-    Eigen::MatrixXd Constr = feModel.Constr;
+    Eigen::MatrixXd Constr = feModel.Constraint;
     int numConstr = static_cast<int>(Constr.rows());
     for (int i = 0; i < numConstr; i++)
     {
@@ -121,11 +121,12 @@ void FiniteElementSolver::solve()
 
 Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int elementID)
 {
-    Eigen::VectorXi elemnode = feModel.getNodesIDofElement(elementID);
+    Eigen::VectorXi elementnodeID;
+    feModel.getNodesIDofElement(elementID, elementnodeID);
     Eigen::VectorXd elemU(24);
     for (int i = 0; i < 8; i++) 
     {
-        int nodeIndex = elemnode(i);
+        int nodeIndex = elementnodeID(i);
         for (int j = 0; j < 3; j++)
         {
             elemU(i * 3 + j) = U.coeff(3 * nodeIndex - 3 + j);
