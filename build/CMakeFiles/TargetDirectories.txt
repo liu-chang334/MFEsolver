@@ -1,0 +1,3 @@
+D:/liuchang/FEsolvercxx/build/CMakeFiles/FEsolver.dir
+D:/liuchang/FEsolvercxx/build/CMakeFiles/ALL_BUILD.dir
+D:/liuchang/FEsolvercxx/build/CMakeFiles/ZERO_CHECK.dir
