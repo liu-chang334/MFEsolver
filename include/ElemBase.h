@@ -5,39 +5,46 @@
 #include <Eigen/Dense>
 #include <cmath> 
 
-
+/**
+ * @class SolidElement
+ * @brief This class represents a solid element in a finite element analysis.
+ * - \c elementID: Element ID
+ * - \c nodeIDs: Node IDs
+ * - \c nodeCoorMatrix: Node coordinates
+ * - \c materialID: Material ID
+ * - \c lambda: Lame's first parameter
+ * - \c mu: Lame's second parameter
+ * - \c rho: density
+ * - \c E: Young's modulus
+ * - \c nu: Poisson's ratio
+ * - \c G: Shear modulus
+ * @details
+ * - The material properties can be set by Lame's parameters, Young's modulus and Poisson's ratio, or Young's modulus and shear modulus.
+ * @note This class is an base class for other element types.
+ * @see C3D8
+ */
 class SolidElement 
 {
 public:
-    int elementID;         // ElemID
-    Eigen::VectorXi nodeIDs;   // NodeID
-    Eigen::MatrixXd nodeCoorMatrix; // Nodexyz
+    int elementID;         
+    Eigen::VectorXi nodeIDs;  
+    Eigen::MatrixXd nodeCoorMatrix; 
 
-
-    int materialID;        // MatID
+    int materialID;        
     double lambda;         // Lame's first parameter
     double mu;             // Lame's second parameter
-    double rho;            // density
-    double E;              // Young's modulus
-    double nu;             // Poisson's ratio
-    double G;              // Shear modulus
+    double rho;           
+    double E;           
+    double nu;             
+    double G;              
 
 public:
     SolidElement(int elemID, int matID = -1);
-
-    // set nodes number and coordinates
+    
     void setNodes(const Eigen::VectorXi& ids, const Eigen::MatrixXd& coords);
-
-    // set material properties by Lame's parameters
     void setMaterialByLame(double lambda, double mu);
-
-    // set material properties by Young's modulus and Poisson's ratio
     void setMaterialByYoungPoisson(double E, double nu);
-
-    // set material properties by Young's modulus and shear modulus
     void setMaterialByYoungShear(double E, double G);
-
-    // set material density
     void setDensity(double density);
 };
 

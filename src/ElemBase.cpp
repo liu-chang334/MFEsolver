@@ -1,13 +1,32 @@
 #include "../include/ElemBase.h"
 
-//************************SolidElement Base Class
+// Class SolidElement
+
+/**
+ * @brief Construct a new SolidElement:: SolidElement object
+ *
+ * @param elemID Element ID
+ * @param matID Material ID
+ */
 SolidElement::SolidElement(int elemID, int matID) : elementID(elemID), materialID(matID) {}
 
+/**
+ * @brief Set the Nodes object
+ *
+ * @param ids Node IDs
+ * @param coords Node coordinates
+ */
 void SolidElement::setNodes(const Eigen::VectorXi& ids, const Eigen::MatrixXd& coords) {
     nodeIDs = ids;
     nodeCoorMatrix = coords;
 }
 
+/**
+ * @brief Set the Material By Lame object
+ *
+ * @param lambda Lame's first parameter
+ * @param mu Lame's second parameter
+ */
 void SolidElement::setMaterialByLame(double lambda, double mu) 
 {
     this->lambda = lambda;
@@ -17,6 +36,12 @@ void SolidElement::setMaterialByLame(double lambda, double mu)
     this->G = mu;
 }
 
+/**
+ * @brief Set the Material By YoungPoisson object
+ *
+ * @param E Young's Modulus
+ * @param nu Poisson's Ratio
+ */
 void SolidElement::setMaterialByYoungPoisson(double E, double nu) 
 {
     this->E = E;
@@ -26,6 +51,12 @@ void SolidElement::setMaterialByYoungPoisson(double E, double nu)
     this->G = E / (2 * (1 + nu));
 }
 
+/**
+ * @brief Set the Material By YoungShear object
+ *
+ * @param E Young's Modulus
+ * @param G Shear Modulus
+ */
 void SolidElement::setMaterialByYoungShear(double E, double G) 
 {
     this->E = E;
@@ -35,9 +66,14 @@ void SolidElement::setMaterialByYoungShear(double E, double G)
     this->mu = G;
 }
 
+/**
+ * @brief Set the Density object
+ *
+ * @param density Density
+ */
 void SolidElement::setDensity(double density) 
 {
     this->rho = density;
 }
 
-//*************************SolidElement Base Class End
+// Class SolidElement End

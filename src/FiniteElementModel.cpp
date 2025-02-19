@@ -1,17 +1,21 @@
 #include "../include/FiniteElementModel.h"
 
-/* Todo: add corrdinate of nodes in order to member variable --> Node
-   node: [x, y, z]
-*/
+/**
+ * @brief Expands the Node matrix by one row and assigns the provided [x, y, z] coordinates.
+ *
+ * @param node A vector of size 3 containing the node coordinates [x, y, z].
+ */
 void FiniteElementModel::addNode(const std::vector<double>& node) {
     Eigen::Index currentRows = Node.rows();
     Node.conservativeResize(currentRows + 1, 3);
     Node.row(currentRows) = Eigen::Vector3d(node[0], node[1], node[2]);
 }
 
-/* Todo: add nodeID of element in order to member variable --> Element
-   element: [nodeid1, nodeid2,..., nodeid8]
-*/
+/**
+ * @brief Expands the Element matrix by one row and assigns the provided element nodes.
+ * 
+ * @param element A vector of integers representing the element nodes [node1, node2, node3, ... , nodeN].
+ */
 void FiniteElementModel::addElement(const std::vector<int>& element) {
     Eigen::Index currentRows = Element.rows();
     Element.conservativeResize(currentRows + 1, element.size());
@@ -20,19 +24,29 @@ void FiniteElementModel::addElement(const std::vector<int>& element) {
     }
 }
 
-/* Todo: add material parameter to member variable --> Material
-   material: [E, nu]
-*/
+/**
+ * @brief Expands the Material matrix by one row and assigns the provided material properties.
+ *
+ * @param material A vector of size 2 containing the material properties [E, A].
+ *                 - E: Young's modulus.
+ *                 - A: Cross-sectional area.
+ * @note Currently, this project only considers elastic material properties,
+ *      but it may be extended in the future to support more complex material models.
+ */
 void FiniteElementModel::addMaterial(const std::vector<double>& material) {
     Eigen::Index currentRows = Material.rows();
     Material.conservativeResize(currentRows + 1, 2);
     Material.row(currentRows) = Eigen::Vector2d(material[0], material[1]);
 }
 
-/* Todo: add nodeID of node set to member variable --> Nsets
-   name: name of node set
-   nodes: [nodeid1, nodeid2,..., nodeidn]
-*/
+/**
+ * @brief Expands the Nsets map by adding a new nset with the provided name and nodes.
+ *
+ * @param name The name of the nset.
+ * @param nodes A vector of integers representing the node IDs in the nset [node1, node2, node3,..., nodeN].
+ * @note The nset name must be unique. If a nset with the same name already exists,
+ *      the new nodes will be overwritten using the new one.
+ */
 void FiniteElementModel::addNset(const std::string& name, const std::vector<int>& nodes) {
     Eigen::VectorXi nset(nodes.size());
     for (size_t i = 0; i < nodes.size(); ++i) {
@@ -50,10 +64,14 @@ void FiniteElementModel::addNset(const std::string& name, const std::vector<int>
     } else { Nsets[name] = nset;}
 }
 
-/* Todo: add elementID of element set to member variable --> Esets
-   name: name of element set
-   elements: [elementid1, elementid2,..., elementidn]
-*/
+/**
+ * @brief Expands the Esets map by adding a new eset with the provided name and elements.
+ *
+ * @param name The name of the eset.
+ * @param elements A vector of integers representing the element IDs in the eset [ele1, ele2, ele3,..., eleN].
+ * @note The eset name must be unique. If an eset with the same name already exists,
+ *      the new elements will be overwritten using the new one.
+ */
 void FiniteElementModel::addEset(const std::string& name, const std::vector<int>& elements) {
     Eigen::VectorXi eset(elements.size());
     for (size_t i = 0; i < elements.size(); ++i) {
@@ -71,10 +89,13 @@ void FiniteElementModel::addEset(const std::string& name, const std::vector<int>
     } else { Esets[name] = eset;}
 }
 
-/* Todo: add load information to member variable --> Force
-   name: nset name
-   dofid: dof id
-   value: load value
+/**
+ * @brief Expands the Force matrix by adding rows for the specified nset and assigns the provided dofid and value.
+ *
+ * @param name The name of the nset.
+ * @param dofid The degree of freedom ID.
+ * @param value The value to be assigned to the specified dofid.
+ * @note The nset name must exist in the Nsets map. 
 */
 void FiniteElementModel::addLoad(const std::string& name, const int& dofid, const double& value) {
     Eigen::VectorXi nodes = Nsets[name];
@@ -85,10 +106,13 @@ void FiniteElementModel::addLoad(const std::string& name, const int& dofid, cons
     }
 }
 
-/* Todo: add constraint information to member variable --> Constraint
-   name: nset name
-   dofid: dof id
-   value: constraint value
+/**
+ * @brief Expands the Constraint matrix by adding rows for the specified nset and assigns the provided dofid and value.
+ *
+ * @param name The name of the nset.
+ * @param dofid The degree of freedom ID.
+ * @param value The value to be assigned to the specified dofid.
+ * @note The nset name must exist in the Nsets map.
 */
 void FiniteElementModel::addConstraint(const std::string& name, const int& dofid, const double& value) {
     Eigen::VectorXi nodes = Nsets[name];
@@ -100,9 +124,12 @@ void FiniteElementModel::addConstraint(const std::string& name, const int& dofid
 }
 
 
-/* Todo: read inp file and store data to object ---> FiniteElementModel
-   filepath: path to inp file such as "D:/fem/beam.inp"
-   femModel: FiniteElementModel object to store data, need to be initialized before calling this function
+/**
+ * @brief Reads the FEM data from an inp file and populates the FiniteElementModel object.
+ *
+ * @param filepath The path to the inp file.
+ * @param femModel Returns the populated FiniteElementModel object.
+ * @note 
 */
 void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& femModel) 
 {
@@ -241,9 +268,12 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
     file.close();
 }
 
-/* Todo: get nodes id of element
-   elementID: element id
-   return: nodeIDs, nodes id of element such as [nodeid1, nodeid2,..., nodeid8]
+/**
+ * @brief Get the nodes ID of the element.
+ *
+ * @param elementID The ID of the element.
+ * @param nodeIDs Return the nodes ID of the element.
+ * @note
 */
 void FiniteElementModel::getNodesIDofElement(int elementID, Eigen::VectorXi& nodeIDs) {
     if (elementID <= 0 || elementID > Element.rows()) {

@@ -11,10 +11,9 @@
 #include <sstream>
 #include <string>
 
-// save matrix to txt file with adjustable precision
-void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder, const std::string& filename, int precision = 6);
 
-// Function to load a matrix from a TXT file
+void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder, 
+                    const std::string& filename, int precision = 6);
 Eigen::MatrixXd loadMatrixFromTXT(const std::string& filepath);
 
 

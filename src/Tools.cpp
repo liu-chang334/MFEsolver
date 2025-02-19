@@ -1,7 +1,13 @@
 #include "../include/Tools.h"
 
-
-// save matrix to TXT file with adjustable precision
+/**
+ * @brief Save a matrix to a TXT file with adjustable precision.
+ *
+ * @param matrix The matrix to be saved.
+ * @param filefolder The folder where the file will be saved.
+ * @param filename The name of the file to be saved.
+ * @param precision The number of decimal places to be saved.
+ */
 void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder, const std::string& filename, int precision)
 {
     // check if the filefolder exists, if not, create it
@@ -34,7 +40,6 @@ void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder
             }
             file << "\n";
         }
-
         file.close();
         std::cout << "Matrix saved to " << filepath << " with " << precision << " decimal places." << std::endl;
     }
@@ -44,7 +49,12 @@ void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder
     }
 }
 
-// Function to load a matrix from a TXT file
+/**
+ * @brief Load a matrix from a TXT file.
+ *
+ * @param filepath The path of the file to be loaded.
+ * @return Eigen::MatrixXd The loaded matrix.
+ */
 Eigen::MatrixXd loadMatrixFromTXT(const std::string& filepath)
 {
     std::ifstream file(filepath);
