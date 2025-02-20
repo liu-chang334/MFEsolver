@@ -55,7 +55,4 @@ public:
     void FEdataPlot();
     void FEdataPlotScalar(std::string fieldname, int component);
 };
-
-
-
 #endif

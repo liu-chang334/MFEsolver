@@ -4,7 +4,16 @@
 #include "FiniteElementModel.h"
 #include <Eigen/Sparse>
 
-// FEM Solver
+/**
+ * @class FiniteElementSolver
+ * @brief This class represents a finite element solver.
+ * - \c feModel: Finite element model --> FiniteElementModel Class
+ * - \c K: Stiffness matrix for the system
+ * - \c F: Force vector for the system
+ * - \c U: Displacement vector for the system
+ * - \c AllStrain: Strain tensor at gauss points in all elements
+ * - \c AllStress: Stress tensor at gauss points in all elements
+ */
 class FiniteElementSolver
 {
 public:
@@ -22,9 +31,8 @@ public:
     void applyBoundaryConditions();
     void solve();
 
-    // get the displacement at nodes of element
     Eigen::VectorXd getElementNodesDisplacement(const int elementID);
-    // calculate strain and stress tensor at gauss points in element
+
     Eigen::MatrixXd calcuElementStrain(const int elementID, bool interpolatetoNodes = true);
     Eigen::MatrixXd calcuElementStress(const int elementID, bool interpolatetoNodes = true);   
     

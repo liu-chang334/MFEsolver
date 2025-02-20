@@ -1,13 +1,24 @@
 #include "../include/FEdataModelPost.h"
 
-// constructor for FEDataModelPost
+
+/**
+ * @brief Construct a new FEDataModelPost object
+ *
+ * @param feModel Finite element model
+ */
 FEDataModelPost::FEDataModelPost(FiniteElementModel feModel) 
 {
     Node = feModel.Node;
     Element = feModel.Element;
 }
 
-// cool to warm color map
+/**
+ * @brief Apply a color map to the mapper
+ *
+ * @param mapper vtkMapper
+ * @param range range of the scalar
+ * @note The color map is cool to warm color map
+ */
 void ApplyParaViewColorMap(vtkMapper* mapper, const double range[2]) {
     vtkNew<vtkColorTransferFunction> colorTransferFunction;
     colorTransferFunction->SetColorSpaceToDiverging();
@@ -18,10 +29,16 @@ void ApplyParaViewColorMap(vtkMapper* mapper, const double range[2]) {
     mapper->SetLookupTable(colorTransferFunction);
     mapper->UseLookupTableScalarRangeOn();
 }
-// read result 
+
+/**
+ * @brief Read the result from the txt file
+ * 
+ * @param fieldname field name, "U" for displacement, "S" for stress
+ * @note The result is stored in the member variablies: Displacement, Stress, etc.
+ *      but only Displacement is implemented now
+ */
 void FEDataModelPost::ReadResult(std::string fieldname)
 {
-    // std::string resultpath = "D://liuchang//FEsolvercxx//FEoutput";
     std::string current_path = std::filesystem::current_path().string();
     std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
 
@@ -30,6 +47,7 @@ void FEDataModelPost::ReadResult(std::string fieldname)
         std::string filename = "U.txt";
         std::string resultfullpath = resultpath + "\\" + filename;
         Eigen::MatrixXd result = loadMatrixFromTXT(resultfullpath);
+
         // transform the displacement (3*node, 1) to (node, 3) 
         int node = Node.rows();
         int dof = 3;
@@ -47,23 +65,31 @@ void FEDataModelPost::ReadResult(std::string fieldname)
     }
 }
 
-// set the points
+/**
+ * @brief Set the points object
+ * 
+ * @note The points are stored in the member variable: points
+ *      The points are stored in the order of nodeID
+ */
 void FEDataModelPost::FEdataSetPoints()
 {
-    // set the points
     for (int i = 0; i < Node.rows(); i++)
     {
         points->InsertNextPoint(Node(i, 0), Node(i, 1), Node(i, 2));
     }
 }
 
-// set the points and grid
+/**
+ * @brief Set the grid object
+ *
+ * @note The grid is stored in the member variable: ugrid
+ *      The grid is stored in the order of elementID
+ */
 void FEDataModelPost::FEdataSetGrid()
 {
-    // set the points
     FEdataSetPoints();
     ugrid->SetPoints(points);
-    // set the grid
+
     for (int i = 0; i < Element.rows(); i++)
     {
         vtkIdType pts[8] = {Element(i, 0)-1, Element(i, 1)-1, Element(i, 2)-1, Element(i, 3)-1, 
@@ -72,12 +98,18 @@ void FEDataModelPost::FEdataSetGrid()
     }
 }
 
+/**
+ * @brief Set the grid scalar object
+ *
+ * @param fieldname field name, "U" for displacement, "S" for stress
+ * @note The grid scalar is stored in the member variable: scalar
+ *      The grid scalar is stored in the order of nodeID
+ */
 void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
 {
     ReadResult(fieldname);
-    // set the points and grid
     FEdataSetGrid();
-    // set the scalar
+
     if (fieldname == "U")
     {
         scalar->SetName("Displacement");
@@ -90,23 +122,23 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
     ugrid->GetPointData()->SetVectors(scalar);
 }
 
+/**
+ * @brief Plot the grid
+ * 
+ * @note The grid is plotted without scalar
+ */
 void FEDataModelPost::FEdataPlot()
 {
-    // set the points and grid
     FEdataSetGrid();
-
-    // set the mapper
     vtkNew<vtkDataSetMapper> mapper;
     mapper->SetInputData(ugrid);
 
-    // set the actor
     vtkNew<vtkActor> actor;
     actor->SetMapper(mapper);
     actor->GetProperty()->SetRepresentationToWireframe();
     actor->GetProperty()->SetColor(0, 0, 0);
     actor->GetProperty()->SetLineWidth(2.0); 
 
-    // set the renderer
     vtkNew<vtkRenderer> renderer;
     renderer->AddActor(actor);
     renderer->SetBackground(0.9, 0.9, 0.9);
@@ -115,13 +147,11 @@ void FEDataModelPost::FEdataPlot()
     // camera->SetParallelProjection(true);  // Enable orthographic projection
     // renderer->SetActiveCamera(camera);
 
-    // set the render window
     vtkNew<vtkRenderWindow> renderWindow;
     renderWindow->AddRenderer(renderer);
     renderWindow->SetSize(1200, 800);
     renderWindow->Render();
 
-    // set the render window interactor
     vtkNew<vtkRenderWindowInteractor> renderWindowInteractor;
     vtkNew<vtkInteractorStyleTrackballCamera> style;
     renderWindowInteractor->SetRenderWindow(renderWindow);
@@ -130,7 +160,13 @@ void FEDataModelPost::FEdataPlot()
     renderWindowInteractor->Start();
 }
 
-
+/**
+ * @brief Plot the grid with scalar
+ *
+ * @param fieldname field name, "U" for displacement, "S" for stress
+ * @param component component of the scalar, 1 for x, 2 for y, 3 for z
+ * @note Only displacement is implemented now
+ */
 void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
 {
     FEdataSetGridScalar(fieldname);

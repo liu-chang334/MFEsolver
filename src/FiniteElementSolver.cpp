@@ -3,31 +3,36 @@
 #include "../include/Tools.h"
 
 
-// constructor for FiniteElementSolver
+/**
+ * @brief Construct a new Finite Element Solver object
+ *
+ * @param feModel Finite element model
+ */
 FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(feModel){}
 
-// assemble the Global Stiffness Matrix
+/**
+ * @brief Assemble the Global Stiffness Matrix
+ * @note The element supported is only C3D8 for now, and the Global Stiffness Matrix 
+ *      is not dealed with constraint yet
+ */
 void FiniteElementSolver::assembleStiffnessMatrix()
 {
     Eigen::MatrixXd Node = feModel.Node;
     Eigen::MatrixXi Element = feModel.Element;
     Eigen::MatrixXd Material = feModel.Material;
 
-    // get the size of the matrix
     int numNodes = static_cast<int>(Node.rows());
     int numElements = static_cast<int>(Element.rows());
     int numMaterials = static_cast<int>(Material.rows());
     
-    // initialize the stiffness matrix
     K = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
 
     // loop over the elements
     for (int i = 0; i < numElements; i++)
     {
         // get the element type
-        std::string elemType = "C3D8"; // not implemented yet
+        std::string elemType = "C3D8"; // FIXME: only C3D8 is supported for now
 
-        // get the element nodes coordinates matrix
         Eigen::VectorXi elemnode = Element.row(i);
         Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3);
         for (int j = 0; j < 8; j++)
@@ -35,25 +40,21 @@ void FiniteElementSolver::assembleStiffnessMatrix()
             elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
         }
 
-        // initialize the element with EID i
         C3D8 elem(i + 1);
         elem.setNodes(elemnode, elemnodeCoor);
         elem.setMaterialByYoungPoisson(Material(0, 0), Material(0, 1));
-        // get the element stiffness matrix
         Eigen::MatrixXd elemK = elem.calcuStiffnessMatrix();
 
-        // get the element dof in global coordinate system
         Eigen::VectorXi elemnodedof(24);
         for (int j = 0; j < 8; j++)
         {
             int nodeIndex = elemnode(j);
-            // for each node
             for (int k = 0; k < 3; k++)
             {
                 elemnodedof(j * 3 + k) = nodeIndex * 3 - 3 + k;
             }
         }
-        // assemble the element stiffness matrix to the global stiffness matrix
+
         for (int j = 0; j < 24; j++)
         {
             for (int k = 0; k < 24; k++)
@@ -66,7 +67,10 @@ void FiniteElementSolver::assembleStiffnessMatrix()
     }
 }
 
-// assemble the Global Force Vector
+/**
+ * @brief Assemble the Global Force Vector
+ * @note The force is not dealed with constraint yet
+ */
 void FiniteElementSolver::assembleForceVector()
 {
     Eigen::MatrixXd Force = feModel.Force;
@@ -82,11 +86,15 @@ void FiniteElementSolver::assembleForceVector()
         int forcedirection = static_cast<int>(Force(i, 1));
         double forcevalue = static_cast<double>(Force(i, 2));
 
-        F.coeffRef(3 * forcenode - 4 + forcedirection) += forcevalue;  // the F here is not dealed with constraint yet
+        F.coeffRef(3 * forcenode - 4 + forcedirection) += forcevalue;
     }
 }
 
 // apply the constraint --method: multiply a large number
+/**
+ * @brief Apply the boundary conditions
+ * @note The method is multiply a large number to the K matrix and F vector
+ */
 void FiniteElementSolver::applyBoundaryConditions()
 {
     long double big_num = 1e8;
@@ -103,14 +111,16 @@ void FiniteElementSolver::applyBoundaryConditions()
         K.coeffRef(constrglobalindex, constrglobalindex) = K.coeff(constrglobalindex, constrglobalindex) * big_num;
     }
 }
-// solve the linear system
+
+/**
+ * @brief Assemble the Global Stiffness Matrix and the Global Force Vector,
+ * and apply the boundary conditions, then solve the linear system
+ * @note The method is solve the linear system by LU decomposition now
+ */
 void FiniteElementSolver::solve()
 {
-    // assemble the stiffness matrix
     assembleStiffnessMatrix();
-    // assemble the force vector
     assembleForceVector();
-    // apply the constraint method
     applyBoundaryConditions();
     
     // solve the linear system
@@ -119,6 +129,12 @@ void FiniteElementSolver::solve()
     U = solver.solve(F);
 }
 
+/**
+ * @brief Get the displacement at nodes of specified element from the 
+ *      Global Displacement Vector
+ * @param elementID Element ID
+ * @return Eigen::VectorXd Displacement vector at nodes of specified element
+ */
 Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int elementID)
 {
     Eigen::VectorXi elementnodeID;
@@ -135,6 +151,13 @@ Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int eleme
     return elemU;
 }
 
+/**
+ * @brief Calculate the strain tensor at gauss points in specified element
+ * @param elementID Element ID
+ * @param interpolatetoNodes If true, the strain tensor is interpolated to nodes
+ * @return Eigen::MatrixXd Strain tensor at gauss points defaultly at gauss points,
+ *      if interpolatetoNodes is true, the strain tensor is interpolated to nodes
+ */
 Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, bool interpolatetoNodes)
 {
     Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
@@ -160,6 +183,13 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
     }
 }
 
+/**
+ * @brief Calculate the stress tensor at gauss points in specified element
+ * @param elementID Element ID
+ * @param interpolatetoNodes If true, the stress tensor is interpolated to nodes
+ * @return Eigen::MatrixXd Stress tensor at gauss points defaultly at gauss points,
+ *      if interpolatetoNodes is true, the stress tensor is interpolated to nodes
+ */
 Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, bool interpolatetoNodes)
 {
     Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
