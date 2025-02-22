@@ -14,6 +14,7 @@ FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(f
  * @brief Assemble the Global Stiffness Matrix
  * @note The element supported is only C3D8 for now, and the Global Stiffness Matrix 
  *      is not dealed with constraint yet
+ * @note Now it takes a long time to assemble the Global Stiffness Matrix, need to be optimized
  */
 void FiniteElementSolver::assembleStiffnessMatrix()
 {
@@ -35,10 +36,15 @@ void FiniteElementSolver::assembleStiffnessMatrix()
 
         Eigen::VectorXi elemnode = Element.row(i);
         Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3);
+
+        // std::cout << "elemnode: \n" << elemnode << std::endl;
+        
         for (int j = 0; j < 8; j++)
         {
             elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
         }
+
+        // std::cout << "elemnodeCoor of element " << i + 1 << ":\n" << elemnodeCoor << std::endl;
 
         C3D8 elem(i + 1);
         elem.setNodes(elemnode, elemnodeCoor);
@@ -86,6 +92,8 @@ void FiniteElementSolver::assembleForceVector()
         int forcedirection = static_cast<int>(Force(i, 1));
         double forcevalue = static_cast<double>(Force(i, 2));
 
+        // std::cout << "forcenode: " << forcenode << "\n forcedirection: " << forcedirection 
+        //     << "\n forcevalue: " << forcevalue << std::endl;
         F.coeffRef(3 * forcenode - 4 + forcedirection) += forcevalue;
     }
 }
@@ -120,13 +128,23 @@ void FiniteElementSolver::applyBoundaryConditions()
 void FiniteElementSolver::solve()
 {
     assembleStiffnessMatrix();
+    std::cout << "K.rows: " << K.rows() << "   K.cols: " << K.cols() << std::endl;
+    std::cout << "Stiffness Matrix K has been assembled" << std::endl;
     assembleForceVector();
+    std::cout << "F.rows: " << F.rows() << "   F.cols: " << F.cols() << std::endl;
+    std::cout << "Force Vector F has been assembled" << std::endl;
     applyBoundaryConditions();
+    std::cout << "Boundary conditions have been applied" << std::endl;
     
     // solve the linear system
     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
     solver.compute(K);
     U = solver.solve(F);
+    std::cout << "Linear system has been solved" << std::endl;
+
+    std::string current_path = std::filesystem::current_path().string();
+    std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
+    saveMatrix2TXT(U, resultpath, "\\U.txt", 8);
 }
 
 /**

@@ -1,4 +1,5 @@
 #include "../include/FiniteElementModel.h"
+#include "../include/Tools.h"
 
 /**
  * @brief Expands the Node matrix by one row and assigns the provided [x, y, z] coordinates.
@@ -67,26 +68,26 @@ void FiniteElementModel::addNset(const std::string& name, const std::vector<int>
 /**
  * @brief Expands the Esets map by adding a new eset with the provided name and elements.
  *
- * @param name The name of the eset.
+ * @param name The name of the elset.
  * @param elements A vector of integers representing the element IDs in the eset [ele1, ele2, ele3,..., eleN].
  * @note The eset name must be unique. If an eset with the same name already exists,
  *      the new elements will be overwritten using the new one.
  */
-void FiniteElementModel::addEset(const std::string& name, const std::vector<int>& elements) {
-    Eigen::VectorXi eset(elements.size());
+void FiniteElementModel::addElset(const std::string& name, const std::vector<int>& elements) {
+    Eigen::VectorXi elset(elements.size());
     for (size_t i = 0; i < elements.size(); ++i) {
-        eset[i] = elements[i];
+        elset[i] = elements[i];
     }
-    auto it = Esets.find(name);
-    if (it!= Esets.end()){
+    auto it = Elsets.find(name);
+    if (it!= Elsets.end()){
         Eigen::VectorXi& existingElements = it->second;
         size_t originalSize = existingElements.size();
-        size_t newSize = originalSize + eset.size();
+        size_t newSize = originalSize + elset.size();
         existingElements.conservativeResize(newSize);
-        for (int i = 0; i < eset.size(); ++i) {
-            existingElements[originalSize + i] = eset[i];
+        for (int i = 0; i < elset.size(); ++i) {
+            existingElements[originalSize + i] = elset[i];
         }
-    } else { Esets[name] = eset;}
+    } else { Elsets[name] = elset;}
 }
 
 /**
@@ -139,7 +140,7 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
         return;
     }
 
-    // Flags control data parsing: *Node, *Element, *Material, *Load, *Constr, *Nset, *Eset
+    // Flags control data parsing: *Node, *Element, *Material, *Load, *Boundary, *Nset, *Elset
     bool inSection[7] = {false, false, false, false, false, false, false};
     std::string currentSetName;  // Store the current set name
     std::string line; // Store the current line
@@ -161,13 +162,14 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
         } else if (line.rfind("*Load", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[3] = true;
-        } else if (line.rfind("*Constr", 0) == 0) {
+        } else if (line.rfind("*Boundary", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[4] = true;
         } else if (line.rfind("*Nset", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[5] = true; 
-            size_t namePos = line.find("Nset=");
+            // size_t namePos = line.find("Nset=");
+            size_t namePos = findCaseInsensitive(line, "Nset=");
             if (namePos != std::string::npos) {
                 currentSetName = line.substr(namePos + 5);
                 currentSetName.erase(remove(currentSetName.begin(), currentSetName.end(), ','), currentSetName.end());
@@ -175,10 +177,11 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
                 std::cerr << "Error in inp file! ";
                 std::cerr << "Please check the line: " << line << std::endl;
             }
-        } else if (line.rfind("*Eset", 0) == 0) {
+        } else if (line.rfind("*Elset", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[6] = true; 
-            size_t namePos = line.find("Eset=");
+            // size_t namePos = line.find("Elset=");
+            size_t namePos = findCaseInsensitive(line, "Elset=");
             if (namePos!= std::string::npos) {
                 currentSetName = line.substr(namePos + 5);
                 currentSetName.erase(remove(currentSetName.begin(), currentSetName.end(), ','), currentSetName.end());
@@ -261,7 +264,7 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
                 if (iss.peek() == ',' || iss.peek() ==' ') iss.ignore(); // skip comma or space
             } 
             if (!elements.empty() && !currentSetName.empty()) {
-                femModel.addEset(currentSetName, elements); 
+                femModel.addElset(currentSetName, elements); 
             }
         }
     }

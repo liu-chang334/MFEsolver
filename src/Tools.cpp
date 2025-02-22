@@ -20,7 +20,6 @@ void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder
         std::filesystem::remove(filepath);
     }
 
-
     std::ofstream file(filepath);
     if (file.is_open())
     {
@@ -47,6 +46,42 @@ void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder
     {
         std::cerr << "Error: cannot open file " << filepath << std::endl;
     }
+}
+
+void saveMatrix2TXT(const Eigen::MatrixXi& matrix, const std::string& filefolder, const std::string& filename)
+{
+    // check if the filefolder exists, if not, create it
+    if (!std::filesystem::exists(filefolder)) {
+        std::filesystem::create_directory(filefolder);
+    } 
+    // check if the file exists, if yes, delete it
+    std::string filepath = filefolder + '/' + filename;
+    if (std::filesystem::exists(filepath)) {
+        std::filesystem::remove(filepath);
+    }
+
+    std::ofstream file(filepath);
+    if (file.is_open())
+    {
+        for (int i = 0; i < matrix.rows(); ++i)
+        {
+            for (int j = 0; j < matrix.cols(); ++j)
+            {
+                file << matrix(i, j);
+
+                if (j < matrix.cols() - 1) {
+                    file << " ";
+                }
+            } 
+            file << "\n";
+        } 
+    }
+    else
+    {
+        std::cerr << "Error: cannot open file " << filepath << std::endl;
+    }
+    file.close();
+    std::cout << "Matrix saved to " << filepath << std::endl;
 }
 
 /**
@@ -99,4 +134,24 @@ Eigen::MatrixXd loadMatrixFromTXT(const std::string& filepath)
         }
     }
     return matrix;
+}
+
+/**
+ * @brief Find the index of a substring in a string, ignoring case.
+ *
+ * @param haystack The string to search in.
+ * @param needle The substring to search for.
+ */
+size_t findCaseInsensitive(const std::string& haystack, const std::string& needle) {
+    auto it = std::search(
+        haystack.begin(), haystack.end(),
+        needle.begin(), needle.end(),
+        [](char ch1, char ch2) { return std::tolower(ch1) == std::tolower(ch2); }
+    );
+
+    if (it != haystack.end()) {
+        return std::distance(haystack.begin(), it);
+    } else {
+        return std::string::npos;
+    }
 }

@@ -61,7 +61,7 @@ public:
     Eigen::MatrixXd Force;
     Eigen::MatrixXd Constraint;
     std::unordered_map<std::string, Eigen::VectorXi> Nsets;
-    std::unordered_map<std::string, Eigen::VectorXi> Esets;
+    std::unordered_map<std::string, Eigen::VectorXi> Elsets;
 
 public:
     void addNode(const std::vector<double>& node);
@@ -70,7 +70,7 @@ public:
     void addLoad(const std::string& name, const int& dofid, const double& value);
     void addConstraint(const std::string& name, const int& dofid, const double& value);
     void addNset(const std::string& nsetName, const std::vector<int>& nodeIDs);
-    void addEset(const std::string& esetName, const std::vector<int>& elementIDs);
+    void addElset(const std::string& esetName, const std::vector<int>& elementIDs);
     void printModelInfo();
     void getNodesIDofElement(int elementID, Eigen::VectorXi &nodeIDs);
 };

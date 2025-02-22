@@ -13,7 +13,7 @@ int main()
     // read FEM data from inp
     // get the path of the project folder
     std::string filefolder1 = std::filesystem::current_path().string(); 
-    std::string filename1 = "dogbone.inp";
+    std::string filename1 = "dogbone2.inp";
     std::filesystem::path filepath1 = filefolder1 + "\\.." + "\\.." + "\\abaqus" + "\\" + filename1;
     FiniteElementModel feaModel;
     ABAQUSFEMReader(filepath1, feaModel);
@@ -21,14 +21,10 @@ int main()
     // initialize the FEA solver
     FiniteElementSolver feaSolver(feaModel);
 
+    // std::cout << "Set-2:" << "\n" << feaModel.Nsets["Set-2"] << std::endl;
+
     // solve the FEA problem
     feaSolver.solve();
-
-    // save the results
-    std::string filefolder2 = filefolder1 + "\\.." + "\\.." + "\\FEoutput";
-    saveMatrix2TXT(feaSolver.K, filefolder2, (std::string)"K.txt", 5);
-    // saveMatrix2TXT(feaSolver.F, filefolder2, (std::string)"F.txt", 15);
-    saveMatrix2TXT(feaSolver.U, filefolder2, (std::string)"U.txt", 15);
 
     // post-process
     FEDataModelPost feaModelPost(feaModel);
