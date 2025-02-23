@@ -15,7 +15,7 @@ void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder
         std::filesystem::create_directory(filefolder);
     }
     // check if the file exists, if yes, delete it
-    std::string filepath = filefolder + '/' + filename;
+    std::string filepath = filefolder + '\\' + filename;
     if (std::filesystem::exists(filepath)) {
         std::filesystem::remove(filepath);
     }
@@ -40,7 +40,7 @@ void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder
             file << "\n";
         }
         file.close();
-        std::cout << "Matrix saved to " << filepath << " with " << precision << " decimal places." << std::endl;
+        // std::cout << "Matrix saved to " << filepath << " with " << precision << " decimal places." << std::endl;
     }
     else
     {

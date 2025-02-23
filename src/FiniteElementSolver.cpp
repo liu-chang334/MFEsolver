@@ -1,6 +1,12 @@
 #include "../include/FiniteElementSolver.h"
 #include "../include/C3D8.h"
 #include "../include/Tools.h"
+#include <chrono>
+
+/**
+ * @brief Solve the FEA problem
+ * @note The element supported is only C3D8 for now, and the Global Stiffness Matrix
+ *      is not dealed with constraint yet
 
 
 /**
@@ -27,24 +33,16 @@ void FiniteElementSolver::assembleStiffnessMatrix()
     int numMaterials = static_cast<int>(Material.rows());
     
     K = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
-
-    // loop over the elements
     for (int i = 0; i < numElements; i++)
     {
-        // get the element type
         std::string elemType = "C3D8"; // FIXME: only C3D8 is supported for now
-
         Eigen::VectorXi elemnode = Element.row(i);
         Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3);
-
-        // std::cout << "elemnode: \n" << elemnode << std::endl;
         
         for (int j = 0; j < 8; j++)
         {
             elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
         }
-
-        // std::cout << "elemnodeCoor of element " << i + 1 << ":\n" << elemnodeCoor << std::endl;
 
         C3D8 elem(i + 1);
         elem.setNodes(elemnode, elemnodeCoor);
@@ -127,24 +125,53 @@ void FiniteElementSolver::applyBoundaryConditions()
  */
 void FiniteElementSolver::solve()
 {
+    auto t_start = std::chrono::steady_clock::now();
     assembleStiffnessMatrix();
-    std::cout << "K.rows: " << K.rows() << "   K.cols: " << K.cols() << std::endl;
-    std::cout << "Stiffness Matrix K has been assembled" << std::endl;
-    assembleForceVector();
-    std::cout << "F.rows: " << F.rows() << "   F.cols: " << F.cols() << std::endl;
-    std::cout << "Force Vector F has been assembled" << std::endl;
-    applyBoundaryConditions();
-    std::cout << "Boundary conditions have been applied" << std::endl;
+    auto t_end = std::chrono::steady_clock::now();
+    std::chrono::duration<double> elapsed_seconds = t_end - t_start;
+    std::cout 
+        << "\033[1;33m[Time]\033[0m "  
+        << "Global Stiffness Matrix K("
+        << K.rows() << ", " << K.cols() << ") assembly time: "
+        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
     
-    // solve the linear system
+    t_start = std::chrono::steady_clock::now();
+    assembleForceVector();
+    t_end = std::chrono::steady_clock::now();
+    elapsed_seconds = t_end - t_start;
+    std::cout
+        << "\033[1;33m[Time]\033[0m "  
+        << "Global Force Vector F("
+        << F.rows() << ", " << F.cols() << ") assembly time:"
+        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
+
+    t_start = std::chrono::steady_clock::now();         
+    applyBoundaryConditions();
+    t_end = std::chrono::steady_clock::now();
+    elapsed_seconds = t_end - t_start;
+    std::cout 
+        << "\033[1;33m[Time]\033[0m "
+        << "Boundary conditions application time:"
+        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
+    
     Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+    t_start = std::chrono::steady_clock::now();
     solver.compute(K);
     U = solver.solve(F);
-    std::cout << "Linear system has been solved" << std::endl;
+    t_end = std::chrono::steady_clock::now();
+    elapsed_seconds = t_end - t_start;
+    std::cout
+        << "\033[1;33m[Time]\033[0m "
+        << "The system solution time:"
+        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
 
     std::string current_path = std::filesystem::current_path().string();
     std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
-    saveMatrix2TXT(U, resultpath, "\\U.txt", 8);
+    if (std::filesystem::exists(resultpath)){
+        std::filesystem::remove_all(resultpath);
+    }
+    std::filesystem::create_directory(resultpath);  
+    saveMatrix2TXT(U, resultpath, "U.txt", 8);
 }
 
 /**
@@ -232,5 +259,4 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, boo
         elemStress = elem.interpolateTensor(elemStress);
         return elemStress;
     }
-    
 }

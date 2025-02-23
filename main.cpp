@@ -33,10 +33,10 @@ int main()
     // feaModelPost.FEdataPlotScalar("U", 3);
 
     // calculate element strain and stress
-    Eigen::MatrixXd elementStrain = feaSolver.calcuElementStrain(50, false);
-    std::cout << elementStrain << std::endl;
-    Eigen::MatrixXd elementStress = feaSolver.calcuElementStress(50, false);
-    std::cout << elementStress << std::endl;
+    // Eigen::MatrixXd elementStrain = feaSolver.calcuElementStrain(50, false);
+    // std::cout << elementStrain << std::endl;
+    // Eigen::MatrixXd elementStress = feaSolver.calcuElementStress(50, false);
+    // std::cout << elementStress << std::endl;
 
     return 0;
 }
