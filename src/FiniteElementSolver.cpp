@@ -32,6 +32,9 @@ void FiniteElementSolver::assembleStiffnessMatrix()
     int numNodes = static_cast<int>(Node.rows());
     int numElements = static_cast<int>(Element.rows());
     int numMaterials = static_cast<int>(Material.rows());
+
+    std::vector<Eigen::Triplet<double>> tripletList;
+    tripletList.reserve(numElements * 24 * 24);
     
     K = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
     for (int i = 0; i < numElements; i++)
@@ -66,10 +69,12 @@ void FiniteElementSolver::assembleStiffnessMatrix()
             {
                 int globalRow = elemnodedof(j);
                 int globalCol = elemnodedof(k);
-                K.coeffRef(globalRow, globalCol) += elemK(j, k);
+                // K.coeffRef(globalRow, globalCol) += elemK(j, k);
+                tripletList.emplace_back(globalRow, globalCol, elemK(j, k));
             }
         }
     }
+    K.setFromTriplets(tripletList.begin(), tripletList.end());
 }
 
 /**
