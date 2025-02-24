@@ -13,7 +13,7 @@ int main()
     // read FEM data from inp
     // get the path of the project folder
     std::string filefolder1 = std::filesystem::current_path().string(); 
-    std::string filename1 = "dogbone.inp";
+    std::string filename1 = "dogbone2.inp";
     std::filesystem::path filepath1 = filefolder1 + "\\.." + "\\.." + "\\abaqus" + "\\" + filename1;
     FiniteElementModel feaModel;
     ABAQUSFEMReader(filepath1, feaModel);

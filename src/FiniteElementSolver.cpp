@@ -2,6 +2,7 @@
 #include "../include/C3D8.h"
 #include "../include/Tools.h"
 #include <chrono>
+#include "Spinner.cpp"
 
 /**
  * @brief Solve the FEA problem
@@ -125,45 +126,46 @@ void FiniteElementSolver::applyBoundaryConditions()
  */
 void FiniteElementSolver::solve()
 {
-    auto t_start = std::chrono::steady_clock::now();
-    assembleStiffnessMatrix();
-    auto t_end = std::chrono::steady_clock::now();
-    std::chrono::duration<double> elapsed_seconds = t_end - t_start;
-    std::cout 
-        << "\033[1;33m[Time]\033[0m "  
-        << "Global Stiffness Matrix K("
-        << K.rows() << ", " << K.cols() << ") assembly time: "
-        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
-    
-    t_start = std::chrono::steady_clock::now();
-    assembleForceVector();
-    t_end = std::chrono::steady_clock::now();
-    elapsed_seconds = t_end - t_start;
-    std::cout
-        << "\033[1;33m[Time]\033[0m "  
-        << "Global Force Vector F("
-        << F.rows() << ", " << F.cols() << ") assembly time:"
-        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
-
-    t_start = std::chrono::steady_clock::now();         
-    applyBoundaryConditions();
-    t_end = std::chrono::steady_clock::now();
-    elapsed_seconds = t_end - t_start;
-    std::cout 
-        << "\033[1;33m[Time]\033[0m "
-        << "Boundary conditions application time:"
-        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
-    
-    Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
-    t_start = std::chrono::steady_clock::now();
-    solver.compute(K);
-    U = solver.solve(F);
-    t_end = std::chrono::steady_clock::now();
-    elapsed_seconds = t_end - t_start;
-    std::cout
-        << "\033[1;33m[Time]\033[0m "
-        << "The system solution time:"
-        << "\033[1;32m" << elapsed_seconds.count() << "s\033[0m\n";
+    {
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Assembling Global Stiffness Matrix K: ", 
+            "Global Stiffness Matrix K assembly time: ",
+            100);
+        assembleStiffnessMatrix();
+    }
+    std::cout << "\033[1;32m[Info]\033[0m "
+            << "Global Stiffness Matrix K is "
+            << "\033[1;32m" << "[" << K.rows() << ", " << K.cols() << "]\033[0m\n";
+    {
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Assembling Global Force Vector F: ",
+            "Global Force Vector F assembly time: ",
+            1);    
+        assembleForceVector();
+    }
+    std::cout << "\033[1;32m[Info]\033[0m "
+            << "Global Force Vector F is "
+            << "\033[1;32m" << "[" << F.rows() << ", " << F.cols() << "]\033[0m\n";
+    {
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Applying boundary conditions: ",
+            "Boundary conditions application time: ",
+            1 );
+        applyBoundaryConditions();
+    }
+    std::cout << "\033[1;32m[Info]\033[0m "
+            << "The method dealing with BC is \033[1;33m" << "multiply a large number\033[0m\n";
+    {
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Solving the system: ",
+            "System solution time: ",
+            100); 
+        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+        solver.compute(K);
+        U = solver.solve(F);
+    }
+    std::cout << "\033[1;32m[Info]\033[0m "
+            << "The method solving the system is \033[1;33m" << "LU decomposition\033[0m\n";
 
     std::string current_path = std::filesystem::current_path().string();
     std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";

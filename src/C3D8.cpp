@@ -1,6 +1,6 @@
 #include "../include/C3D8.h"
 
-// Class C3D8
+
 /**
  * @brief Constructor for the C3D8 class.
  *
