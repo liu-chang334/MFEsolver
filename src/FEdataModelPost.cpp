@@ -4,7 +4,7 @@
 /**
  * @brief Construct a new FEDataModelPost object
  *
- * @param feModel Finite element model
+ * @param[in] feModel Finite element model
  */
 FEDataModelPost::FEDataModelPost(FiniteElementModel feModel) 
 {
@@ -15,8 +15,8 @@ FEDataModelPost::FEDataModelPost(FiniteElementModel feModel)
 /**
  * @brief Apply a color map to the mapper
  *
- * @param mapper vtkMapper
- * @param range range of the scalar
+ * @param[in,out] mapper vtkMapper
+ * @param[in] range range of the scalar
  * @note The color map is cool to warm color map
  */
 void ApplyParaViewColorMap(vtkMapper* mapper, const double range[2]) {
@@ -33,7 +33,7 @@ void ApplyParaViewColorMap(vtkMapper* mapper, const double range[2]) {
 /**
  * @brief Read the result from the txt file
  * 
- * @param fieldname field name, "U" for displacement, "S" for stress
+ * @param[in] fieldname field name, "U" for displacement, "S" for stress
  * @note The result is stored in the member variablies: Displacement, Stress, etc.
  *      but only Displacement is implemented now
  */
@@ -101,7 +101,7 @@ void FEDataModelPost::FEdataSetGrid()
 /**
  * @brief Set the grid scalar object
  *
- * @param fieldname field name, "U" for displacement, "S" for stress
+ * @param[in] fieldname field name, "U" for displacement, "S" for stress
  * @note The grid scalar is stored in the member variable: scalar
  *      The grid scalar is stored in the order of nodeID
  */
@@ -163,8 +163,8 @@ void FEDataModelPost::FEdataPlot()
 /**
  * @brief Plot the grid with scalar
  *
- * @param fieldname field name, "U" for displacement, "S" for stress
- * @param component component of the scalar, 1 for x, 2 for y, 3 for z
+ * @param[in] fieldname field name, "U" for displacement, "S" for stress
+ * @param[in] component component of the scalar, 1 for x, 2 for y, 3 for z
  * @note Only displacement is implemented now
  */
 void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)

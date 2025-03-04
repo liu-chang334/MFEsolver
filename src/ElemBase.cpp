@@ -5,16 +5,16 @@
 /**
  * @brief Construct a new SolidElement:: SolidElement object
  *
- * @param elemID Element ID
- * @param matID Material ID
+ * @param[in] elemID Element ID
+ * @param[in] matID Material ID
  */
 SolidElement::SolidElement(int elemID, int matID) : elementID(elemID), materialID(matID) {}
 
 /**
  * @brief Set the Nodes object
  *
- * @param ids Node IDs
- * @param coords Node coordinates
+ * @param[in] ids Node IDs
+ * @param[in] coords Node coordinates
  */
 void SolidElement::setNodes(const Eigen::VectorXi& ids, const Eigen::MatrixXd& coords) {
     nodeIDs = ids;
@@ -24,8 +24,8 @@ void SolidElement::setNodes(const Eigen::VectorXi& ids, const Eigen::MatrixXd& c
 /**
  * @brief Set the Material By Lame object
  *
- * @param lambda Lame's first parameter
- * @param mu Lame's second parameter
+ * @param[in] lambda Lame's first parameter
+ * @param[in] mu Lame's second parameter
  */
 void SolidElement::setMaterialByLame(double lambda, double mu) 
 {
@@ -39,8 +39,8 @@ void SolidElement::setMaterialByLame(double lambda, double mu)
 /**
  * @brief Set the Material By YoungPoisson object
  *
- * @param E Young's Modulus
- * @param nu Poisson's Ratio
+ * @param[in] E Young's Modulus
+ * @param[in] nu Poisson's Ratio
  */
 void SolidElement::setMaterialByYoungPoisson(double E, double nu) 
 {
@@ -54,8 +54,8 @@ void SolidElement::setMaterialByYoungPoisson(double E, double nu)
 /**
  * @brief Set the Material By YoungShear object
  *
- * @param E Young's Modulus
- * @param G Shear Modulus
+ * @param[in] E Young's Modulus
+ * @param[in] G Shear Modulus
  */
 void SolidElement::setMaterialByYoungShear(double E, double G) 
 {
@@ -69,7 +69,7 @@ void SolidElement::setMaterialByYoungShear(double E, double G)
 /**
  * @brief Set the Density object
  *
- * @param density Density
+ * @param[in] density Density
  */
 void SolidElement::setDensity(double density) 
 {

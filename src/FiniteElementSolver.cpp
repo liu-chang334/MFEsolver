@@ -13,7 +13,7 @@
 /**
  * @brief Construct a new Finite Element Solver object
  *
- * @param feModel Finite element model
+ * @param[in] feModel Finite element model
  */
 FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(feModel){}
 
@@ -184,7 +184,7 @@ void FiniteElementSolver::solve()
 /**
  * @brief Get the displacement at nodes of specified element from the 
  *      Global Displacement Vector
- * @param elementID Element ID
+ * @param[in] elementID Element ID
  * @return Eigen::VectorXd Displacement vector at nodes of specified element
  */
 Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int elementID)
@@ -205,8 +205,8 @@ Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int eleme
 
 /**
  * @brief Calculate the strain tensor at gauss points in specified element
- * @param elementID Element ID
- * @param interpolatetoNodes If true, the strain tensor is interpolated to nodes
+ * @param[in] elementID Element ID
+ * @param[in] interpolatetoNodes If true, the strain tensor is interpolated to nodes
  * @return Eigen::MatrixXd Strain tensor at gauss points defaultly at gauss points,
  *      if interpolatetoNodes is true, the strain tensor is interpolated to nodes
  */
@@ -237,8 +237,8 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
 
 /**
  * @brief Calculate the stress tensor at gauss points in specified element
- * @param elementID Element ID
- * @param interpolatetoNodes If true, the stress tensor is interpolated to nodes
+ * @param[in] elementID Element ID
+ * @param[in] interpolatetoNodes If true, the stress tensor is interpolated to nodes
  * @return Eigen::MatrixXd Stress tensor at gauss points defaultly at gauss points,
  *      if interpolatetoNodes is true, the stress tensor is interpolated to nodes
  */

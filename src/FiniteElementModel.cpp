@@ -4,7 +4,7 @@
 /**
  * @brief Expands the Node matrix by one row and assigns the provided [x, y, z] coordinates.
  *
- * @param node A vector of size 3 containing the node coordinates [x, y, z].
+ * @param[in] node A vector of size 3 containing the node coordinates [x, y, z].
  */
 void FiniteElementModel::addNode(const std::vector<double>& node) {
     Eigen::Index currentRows = Node.rows();
@@ -15,7 +15,7 @@ void FiniteElementModel::addNode(const std::vector<double>& node) {
 /**
  * @brief Expands the Element matrix by one row and assigns the provided element nodes.
  * 
- * @param element A vector of integers representing the element nodes [node1, node2, node3, ... , nodeN].
+ * @param[in] element A vector of integers representing the element nodes [node1, node2, node3, ... , nodeN].
  */
 void FiniteElementModel::addElement(const std::vector<int>& element) {
     Eigen::Index currentRows = Element.rows();
@@ -28,7 +28,7 @@ void FiniteElementModel::addElement(const std::vector<int>& element) {
 /**
  * @brief Expands the Material matrix by one row and assigns the provided material properties.
  *
- * @param material A vector of size 2 containing the material properties [E, A].
+ * @param[in] material A vector of size 2 containing the material properties [E, A].
  *                 - E: Young's modulus.
  *                 - A: Cross-sectional area.
  * @note Currently, this project only considers elastic material properties,
@@ -43,8 +43,8 @@ void FiniteElementModel::addMaterial(const std::vector<double>& material) {
 /**
  * @brief Expands the Nsets map by adding a new nset with the provided name and nodes.
  *
- * @param name The name of the nset.
- * @param nodes A vector of integers representing the node IDs in the nset [node1, node2, node3,..., nodeN].
+ * @param[in] name The name of the nset.
+ * @param[in] nodes A vector of integers representing the node IDs in the nset [node1, node2, node3,..., nodeN].
  * @note The nset name must be unique. If a nset with the same name already exists,
  *      the new nodes will be overwritten using the new one.
  */
@@ -68,8 +68,8 @@ void FiniteElementModel::addNset(const std::string& name, const std::vector<int>
 /**
  * @brief Expands the Esets map by adding a new eset with the provided name and elements.
  *
- * @param name The name of the elset.
- * @param elements A vector of integers representing the element IDs in the eset [ele1, ele2, ele3,..., eleN].
+ * @param[in] name The name of the elset.
+ * @param[in] elements A vector of integers representing the element IDs in the eset [ele1, ele2, ele3,..., eleN].
  * @note The eset name must be unique. If an eset with the same name already exists,
  *      the new elements will be overwritten using the new one.
  */
@@ -93,9 +93,9 @@ void FiniteElementModel::addElset(const std::string& name, const std::vector<int
 /**
  * @brief Expands the Force matrix by adding rows for the specified nset and assigns the provided dofid and value.
  *
- * @param name The name of the nset.
- * @param dofid The degree of freedom ID.
- * @param value The value to be assigned to the specified dofid.
+ * @param[in] name The name of the nset.
+ * @param[in] dofid The degree of freedom ID.
+ * @param[in] value The value to be assigned to the specified dofid.
  * @note The nset name must exist in the Nsets map. 
 */
 void FiniteElementModel::addLoad(const std::string& name, const int& dofid, const double& value) {
@@ -110,9 +110,9 @@ void FiniteElementModel::addLoad(const std::string& name, const int& dofid, cons
 /**
  * @brief Expands the Constraint matrix by adding rows for the specified nset and assigns the provided dofid and value.
  *
- * @param name The name of the nset.
- * @param dofid The degree of freedom ID.
- * @param value The value to be assigned to the specified dofid.
+ * @param[in] name The name of the nset.
+ * @param[in] dofid The degree of freedom ID.
+ * @param[in] value The value to be assigned to the specified dofid.
  * @note The nset name must exist in the Nsets map.
 */
 void FiniteElementModel::addConstraint(const std::string& name, const int& dofid, const double& value) {
@@ -128,8 +128,8 @@ void FiniteElementModel::addConstraint(const std::string& name, const int& dofid
 /**
  * @brief Reads the FEM data from an inp file and populates the FiniteElementModel object.
  *
- * @param filepath The path to the inp file.
- * @param femModel Returns the populated FiniteElementModel object.
+ * @param[in] filepath The path to the inp file.
+ * @param[in,out] femModel Returns the populated FiniteElementModel object.
  * @note 
 */
 void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& femModel) 
@@ -172,7 +172,7 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
             size_t namePos = findCaseInsensitive(line, "Nset=");
             if (namePos != std::string::npos) {
                 currentSetName = line.substr(namePos + 5);
-                currentSetName.erase(remove(currentSetName.begin(), currentSetName.end(), ','), currentSetName.end());
+                // currentSetName.erase(remove(currentSetName.begin(), currentSetName.end(), ','), currentSetName.end());
             }else if (namePos == std::string::npos) {
                 std::cerr << "Error in inp file! ";
                 std::cerr << "Please check the line: " << line << std::endl;
@@ -184,7 +184,7 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
             size_t namePos = findCaseInsensitive(line, "Elset=");
             if (namePos!= std::string::npos) {
                 currentSetName = line.substr(namePos + 5);
-                currentSetName.erase(remove(currentSetName.begin(), currentSetName.end(), ','), currentSetName.end());
+                // currentSetName.erase(remove(currentSetName.begin(), currentSetName.end(), ','), currentSetName.end());
             }else if (namePos == std::string::npos) {
                 std::cerr << "Error in inp file! ";
                 std::cerr << "Please check the line: " << line << std::endl;
@@ -274,8 +274,8 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
 /**
  * @brief Get the nodes ID of the element.
  *
- * @param elementID The ID of the element.
- * @param nodeIDs Return the nodes ID of the element.
+ * @param[in] elementID The ID of the element.
+ * @param[in,out] nodeIDs Return the nodes ID of the element.
  * @note
 */
 void FiniteElementModel::getNodesIDofElement(int elementID, Eigen::VectorXi& nodeIDs) {

@@ -79,10 +79,10 @@ public:
 void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& femModel);
 
 /**
- * @brief Prints information about a given element.
+ * @brief Reads a finite element model from a file.
  *
- * This function takes an element as input and prints various properties of the element.
- * The element type is determined by the template parameter ElementType.
+ * @param[in] filepath The path to the file.
+ * @param[in,out] femModel The finite element model to be populated.
  */
 template <typename ElementType>
 void printElementInfo(ElementType &element){

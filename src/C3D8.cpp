@@ -4,8 +4,8 @@
 /**
  * @brief Constructor for the C3D8 class.
  *
- * @param elemID The ID of the element.
- * @param matID The ID of the material.
+ * @param[in] elemID The ID of the element.
+ * @param[in] matID The ID of the material.
  */
 C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3), gaussWeights(8,1)
 {
@@ -27,9 +27,9 @@ C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3
 /**
  * @brief Calculate the matrix of shape functions at a given gaussian point.
  *
- * @param r The r-coordinate of the gaussian point.
- * @param s The s-coordinate of the gaussian point.
- * @param t The t-coordinate of the gaussian point.
+ * @param[in] r The r-coordinate of the gaussian point.
+ * @param[in] s The s-coordinate of the gaussian point.
+ * @param[in] t The t-coordinate of the gaussian point.
  * @return The matrix of shape functions.
  */
 Eigen::VectorXd C3D8::calcuShapeFunctions(double r, double s, double t)
@@ -51,9 +51,9 @@ Eigen::VectorXd C3D8::calcuShapeFunctions(double r, double s, double t)
 /**
  * @brief Calculate the matrix of shape function derivatives at a given gaussian point.
  *
- * @param r The r-coordinate of the gaussian point.
- * @param s The s-coordinate of the gaussian point.
- * @param t The t-coordinate of the gaussian point.
+ * @param[in] r The r-coordinate of the gaussian point.
+ * @param[in] s The s-coordinate of the gaussian point.
+ * @param[in] t The t-coordinate of the gaussian point.
  * @return The matrix of shape function derivatives.
  */
 Eigen::MatrixXd C3D8::calcuShapeFunctionDerivatives(double r, double s, double t) 
@@ -77,7 +77,7 @@ Eigen::MatrixXd C3D8::calcuShapeFunctionDerivatives(double r, double s, double t
 /**
  * @brief Calculate the Jacobian matrix at a given gaussian point.
  *
- * @param Nrst_diff The matrix of shape function derivatives.
+ * @param[in] Nrst_diff The matrix of shape function derivatives.
  * @return The Jacobian matrix 3x3.
  */
 Eigen::MatrixXd C3D8::calcuJacobian(const Eigen::MatrixXd& Nrst_diff) 
@@ -97,7 +97,7 @@ Eigen::MatrixXd C3D8::calcuJacobian(const Eigen::MatrixXd& Nrst_diff)
 /**
  * @brief Calculate the inverse of the Jacobian matrix.
  *
- * @param J The Jacobian matrix 3x3.
+ * @param[in] J The Jacobian matrix 3x3.
  * @return The inverse of the Jacobian matrix 3x3.
  */
 Eigen::MatrixXd C3D8::calcuJacobianInverse(const Eigen::MatrixXd& J) 
@@ -114,9 +114,9 @@ Eigen::MatrixXd C3D8::calcuJacobianInverse(const Eigen::MatrixXd& J)
 /**
  * @brief Calculate the B matrix at a given gaussian point.
  *
- * @param r The r-coordinate of the gaussian point.
- * @param s The s-coordinate of the gaussian point.
- * @param t The t-coordinate of the gaussian point.
+ * @param[in] r The r-coordinate of the gaussian point.
+ * @param[in] s The s-coordinate of the gaussian point.
+ * @param[in] t The t-coordinate of the gaussian point.
  * @return The B matrix 6x24.
  */
 Eigen::MatrixXd C3D8::calcuBMatrix(double r, double s, double t) 
@@ -160,9 +160,9 @@ Eigen::MatrixXd C3D8::calcuBMatrix(double r, double s, double t)
 /**
  * @brief Calculate the volumetric B matrix at a given gaussian point.
  *
- * @param r The r-coordinate of the gaussian point.
- * @param s The s-coordinate of the gaussian point.
- * @param t The t-coordinate of the gaussian point.
+ * @param[in] r The r-coordinate of the gaussian point.
+ * @param[in] s The s-coordinate of the gaussian point.
+ * @param[in] t The t-coordinate of the gaussian point.
  * @return The volumetric B matrix 6x24.
  */
 Eigen::MatrixXd C3D8::calcuBMatrixVolumetric(double r, double s, double t)
@@ -220,9 +220,9 @@ void C3D8::calcuBMatrixVolumetricAverage()
 /**
  * @brief Calculate the corrected B matrix at a given gaussian point.
  *
- * @param r The r-coordinate of the gaussian point.
- * @param s The s-coordinate of the gaussian point.
- * @param t The t-coordinate of the gaussian point.
+ * @param[in] r The r-coordinate of the gaussian point.
+ * @param[in] s The s-coordinate of the gaussian point.
+ * @param[in] t The t-coordinate of the gaussian point.
  * @return The corrected B matrix 6x24.
  */
 Eigen::MatrixXd C3D8::calcuBMatrixCorrected(double r, double s, double t)
@@ -255,9 +255,9 @@ Eigen::MatrixXd C3D8::calcuBMatrixCorrected(double r, double s, double t)
 /**
  * @brief Calculate the deviatoric B matrix at a given gaussian point.
  *
- * @param r The r-coordinate of the gaussian point.
- * @param s The s-coordinate of the gaussian point.
- * @param t The t-coordinate of the gaussian point.
+ * @param[in] r The r-coordinate of the gaussian point.
+ * @param[in] s The s-coordinate of the gaussian point.
+ * @param[in] t The t-coordinate of the gaussian point.
  * @return The deviatoric B matrix 6x24.
  */
 Eigen::MatrixXd C3D8::calcuBMatrixDeviatoric(double r, double s, double t)
@@ -355,7 +355,7 @@ Eigen::MatrixXd C3D8::calcuStiffnessMatrix()
 /**
  * @brief Calculate the strain tensor at all gauss points of the element.
  *
- * @param u The displacement vector at all nodes of the element.
+ * @param[in] u The displacement vector at all nodes of the element.
  * @return The strain tensor 6x8.
  */
 Eigen::MatrixXd C3D8::calcuStrainTensor(const Eigen::VectorXd& u)
@@ -390,7 +390,7 @@ Eigen::MatrixXd C3D8::calcuStressTensor(const Eigen::VectorXd& u)
 /**
  * @brief Interpolate a tensor from gauss points to nodes.
  *
- * @param tensor_at_Gpoints The tensor at gauss points 6x8.
+ * @param[in] tensor_at_Gpoints The tensor at gauss points 6x8.
  * @return The tensor at nodes 6x8.
  */
 Eigen::MatrixXd C3D8::interpolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints)
