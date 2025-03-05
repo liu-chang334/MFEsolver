@@ -4,6 +4,7 @@
 #include "include/FiniteElementSolver.h"
 #include "include/Tools.h"
 #include "include/FEdataModelPost.h"
+#include "src/Spinner.cpp"
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2);
 VTK_MODULE_INIT(vtkInteractionStyle);
@@ -26,6 +27,19 @@ int main()
     // solve the FEA problem
     feaSolver.solve();
 
+    feaSolver.calcuAllElementStrain();
+    feaSolver.calcuAllElementStress();
+
+    {
+        Spinner spinner("Calculating average strain at nodes", "Costing time: ", 100);
+        feaSolver.avgStrainAtNodes();
+    }
+
+    {
+        Spinner spinner("Calculating average stress at nodes", "Costing time: ", 100);
+        feaSolver.avgStressAtNodes(); 
+    }
+    
     // post-process
     FEDataModelPost feaModelPost(feaModel);
     feaModelPost.FEdataPlotScalar("U", 1);

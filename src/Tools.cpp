@@ -48,6 +48,73 @@ void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder
     }
 }
 
+void saveMatrix2TXT(std::vector<Eigen::MatrixXd>& matrix, const std::string& filefolder, 
+                    const std::string& filename, int precision)
+{
+    // check if the filefolder exists, if not, create it
+    if (!std::filesystem::exists(filefolder)) {
+        std::filesystem::create_directory(filefolder);
+    }
+    std::string filepath = filefolder + '\\' + filename;
+    std::ofstream file(filepath);
+    if (file.is_open())
+    {
+        // Set the precision as requested
+        file << std::fixed << std::setprecision(precision);
+
+        for (int i = 0; i < matrix.size(); ++i)
+        {
+            for (int j = 0; j < matrix[i].rows(); ++j)
+            {
+                for (int k = 0; k < matrix[i].cols(); ++k)
+                {
+                    file << std::setw(10 + precision)  // Adjust width to account for increased precision
+                        << matrix[i](j, k);
+
+                    if (k < matrix[i].cols() - 1) {
+                        file << ",";  
+                    } 
+                } 
+                file << "\n";
+            } 
+            // file << "\n";
+        }
+    } 
+    file.close();
+    // std::cout << "Matrix saved to " << filepath << " with " << precision << " decimal places." << std::endl;
+}
+
+
+void saveMatrix2TXT(std::vector<Eigen::VectorXd>& matrix, const std::string& filefolder, 
+    const std::string& filename, int precision)
+{
+    // check if the filefolder exists, if not, create it
+    if (!std::filesystem::exists(filefolder)) {
+        std::filesystem::create_directory(filefolder);
+    }
+    std::string filepath = filefolder + '\\' + filename;
+    std::ofstream file(filepath);
+    if (file.is_open())
+    {
+        // Set the precision as requested
+        file << std::fixed << std::setprecision(precision);
+
+        for (int i = 0; i < matrix.size(); ++i)
+        {
+            for (int j = 0; j < matrix[i].size(); ++j)
+            {
+                file << std::setw(10 + precision)  // Adjust width to account for increased precision
+                    << matrix[i](j);
+
+                if (j < matrix[i].size() - 1) {
+                    file << ",";
+                }
+            } 
+            file << "\n";
+        }
+    }
+    file.close();
+}
 void saveMatrix2TXT(const Eigen::MatrixXi& matrix, const std::string& filefolder, const std::string& filename)
 {
     // check if the filefolder exists, if not, create it

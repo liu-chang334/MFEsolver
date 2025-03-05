@@ -14,8 +14,12 @@
 
 void saveMatrix2TXT(const Eigen::MatrixXd& matrix, const std::string& filefolder, 
                     const std::string& filename, int precision = 6);
-                    void saveMatrix2TXT(const Eigen::MatrixXi& matrix, const std::string& filefolder, 
-                        const std::string& filename);
+void saveMatrix2TXT(std::vector<Eigen::MatrixXd>& matrix, const std::string& filefolder, 
+                    const std::string& filename, int precision = 6);
+void saveMatrix2TXT(std::vector<Eigen::VectorXd>& matrix, const std::string& filefolder, 
+                        const std::string& filename, int precision = 6);
+void saveMatrix2TXT(const Eigen::MatrixXi& matrix, const std::string& filefolder, 
+                    const std::string& filename);
 Eigen::MatrixXd loadMatrixFromTXT(const std::string& filepath);
 size_t findCaseInsensitive(const std::string& haystack, const std::string& needle);
 

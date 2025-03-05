@@ -44,7 +44,7 @@ void FEDataModelPost::ReadResult(std::string fieldname)
 
     if (fieldname == "U")
     {
-        std::string filename = "U.txt";
+        std::string filename = "Displacement.txt";
         std::string resultfullpath = resultpath + "\\" + filename;
         Eigen::MatrixXd result = loadMatrixFromTXT(resultfullpath);
 

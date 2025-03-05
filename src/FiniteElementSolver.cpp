@@ -178,7 +178,7 @@ void FiniteElementSolver::solve()
         std::filesystem::remove_all(resultpath);
     }
     std::filesystem::create_directory(resultpath);  
-    saveMatrix2TXT(U, resultpath, "U.txt", 8);
+    saveMatrix2TXT(U, resultpath, "Displacement.txt", 8);
 }
 
 /**
@@ -210,7 +210,7 @@ Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int eleme
  * @return Eigen::MatrixXd Strain tensor at gauss points defaultly at gauss points,
  *      if interpolatetoNodes is true, the strain tensor is interpolated to nodes
  */
-Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, bool interpolatetoNodes)
+Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, bool extrapolatetoNodes)
 {
     Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
     Eigen::MatrixXd elemStrain = Eigen::MatrixXd::Zero(6, 8);
@@ -224,7 +224,7 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
     C3D8 elem(elementID);
     elem.setNodes(elemnode, elemnodeCoor);
     elemStrain = elem.calcuStrainTensor(elemU);
-    if (!interpolatetoNodes)
+    if (!extrapolatetoNodes)
     {
         return elemStrain; 
     }
@@ -242,7 +242,7 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
  * @return Eigen::MatrixXd Stress tensor at gauss points defaultly at gauss points,
  *      if interpolatetoNodes is true, the stress tensor is interpolated to nodes
  */
-Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, bool interpolatetoNodes)
+Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, bool extrapolatetoNodes)
 {
     Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
     Eigen::MatrixXd elemStress = Eigen::MatrixXd::Zero(6, 8);
@@ -257,7 +257,7 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, boo
     elem.setMaterialByYoungPoisson(feModel.Material(0, 0), feModel.Material(0, 1));
     elem.setNodes(elemnode, elemnodeCoor);
     elemStress = elem.calcuStressTensor(elemU);
-    if (!interpolatetoNodes)
+    if (!extrapolatetoNodes)
     {
         return elemStress;
     }
@@ -265,5 +265,121 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, boo
     {
         elemStress = elem.extrapolateTensor(elemStress);
         return elemStress;
+    }
+}
+
+/**
+ * @brief Calculate the strain tensor at gauss points in all elements
+ * @param[in] extrapolatetoNodes If true, the strain tensor is extrapolated to nodes
+ * @param[in] is_write If true, the strain tensor is written to a file
+ */
+void FiniteElementSolver::calcuAllElementStrain(bool extrapolatetoNodes, bool is_write)
+{
+    int numElements = static_cast<int>(feModel.Element.rows());
+    for (int i = 0; i < numElements; i++)
+    {
+        Eigen::MatrixXd elemStrain = calcuElementStrain(i + 1, false);
+        AllStrain.push_back(elemStrain);
+    }
+    if (is_write)
+    {
+        std::string current_path = std::filesystem::current_path().string();
+        std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
+        if (std::filesystem::exists(resultpath)){
+            saveMatrix2TXT(AllStrain, resultpath, "Strain_at_nodes.txt");
+        }
+    }
+}
+
+void FiniteElementSolver::calcuAllElementStress(bool extrapolatetoNodes, bool is_write)
+{
+    int numElements = static_cast<int>(feModel.Element.rows());
+    for (int i = 0; i < numElements; i++)
+    {
+        Eigen::MatrixXd elemStress = calcuElementStress(i + 1, false);
+        AllStress.push_back(elemStress);
+    }
+    if (is_write)
+    {
+        std::string current_path = std::filesystem::current_path().string();
+        std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
+        if (std::filesystem::exists(resultpath)){
+            saveMatrix2TXT(AllStress, resultpath, "Stress_at_nodes.txt");
+        }
+    }
+}
+
+void FiniteElementSolver::avgStrainAtNodes(bool is_write)
+{
+    int numNodes    = static_cast<int>(feModel.Node.rows());
+    int numElements = static_cast<int>(feModel.Element.rows());
+
+    std::vector<Eigen::VectorXd> sumStrain_at_node(numNodes, Eigen::VectorXd::Zero(6));
+    std::vector<int> count_at_node(numNodes, 0);
+
+    for(int j = 0; j < numElements; j++)
+    {
+        Eigen::VectorXi elemNodes = feModel.Element.row(j);
+        for(int k = 0; k < 8; k++)
+        {
+            int nodeId = elemNodes(k) - 1; // 转成 0-based index
+            sumStrain_at_node[nodeId] += AllStrain[j].col(k);
+            count_at_node[nodeId]++;
+        }
+    }
+
+    Strain_avg_at_node.clear();
+    Strain_avg_at_node.reserve(numNodes);
+
+    for(int i = 0; i < numNodes; i++)
+    {
+        Eigen::VectorXd avgStrain = sumStrain_at_node[i] / double(count_at_node[i]);
+        Strain_avg_at_node.push_back(avgStrain);
+    }
+    if(is_write)
+    {
+        std::string current_path = std::filesystem::current_path().string();
+        std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
+        if (std::filesystem::exists(resultpath))
+        {
+            saveMatrix2TXT(Strain_avg_at_node, resultpath, "Strain_avg_at_nodes.txt");
+        } 
+    }
+}
+
+void FiniteElementSolver::avgStressAtNodes(bool is_write)
+{
+    int numNodes    = static_cast<int>(feModel.Node.rows());
+    int numElements = static_cast<int>(feModel.Element.rows());
+
+    std::vector<Eigen::VectorXd> sumStress_at_node(numNodes, Eigen::VectorXd::Zero(6));
+    std::vector<int> count_at_node(numNodes, 0);
+
+    for(int j = 0; j < numElements; j++)
+    {
+        Eigen::VectorXi elemNodes = feModel.Element.row(j);
+        for(int k = 0; k < 8; k++)
+        {
+            int nodeId = elemNodes(k) - 1; // 转成 0-based index
+            sumStress_at_node[nodeId] += AllStress[j].col(k);
+            count_at_node[nodeId]++; 
+        } 
+    } 
+    Stress_avg_at_node.clear();
+    Stress_avg_at_node.reserve(numNodes);
+
+    for(int i = 0; i < numNodes; i++)
+    {
+        Eigen::VectorXd avgStress = sumStress_at_node[i] / double(count_at_node[i]);
+        Stress_avg_at_node.push_back(avgStress);
+    }
+    if(is_write)
+    {
+        std::string current_path = std::filesystem::current_path().string();
+        std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
+        if (std::filesystem::exists(resultpath))
+        {
+            saveMatrix2TXT(Stress_avg_at_node, resultpath, "Stress_avg_at_nodes.txt");
+        } 
     }
 }

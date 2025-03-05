@@ -23,6 +23,8 @@ public:
     Eigen::SparseVector<double> U;
     std::vector<Eigen::MatrixXd> AllStrain;
     std::vector<Eigen::MatrixXd> AllStress;
+    std::vector<Eigen::VectorXd> Strain_avg_at_node;
+    std::vector<Eigen::VectorXd> Stress_avg_at_node;
 
 public:
     FiniteElementSolver(FiniteElementModel feModel);
@@ -33,8 +35,12 @@ public:
 
     Eigen::VectorXd getElementNodesDisplacement(const int elementID);
 
-    Eigen::MatrixXd calcuElementStrain(const int elementID, bool interpolatetoNodes = true);
-    Eigen::MatrixXd calcuElementStress(const int elementID, bool interpolatetoNodes = true);   
+    Eigen::MatrixXd calcuElementStrain(const int elementID, bool extrapolatetoNodes = true);
+    Eigen::MatrixXd calcuElementStress(const int elementID, bool extrapolatetoNodes = true); 
+    void calcuAllElementStrain(bool extrapolatetoNodes = true, bool is_write = true);
+    void calcuAllElementStress(bool extrapolatetoNodes = true, bool is_write = true);  
+    void avgStrainAtNodes(bool is_write = true);
+    void avgStressAtNodes(bool is_write = true);
     
 };
 #endif
