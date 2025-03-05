@@ -6,18 +6,24 @@
  *
  * @param[in] elemID The ID of the element.
  * @param[in] matID The ID of the material.
+ * @note The order of the gaussian points is defined by right-hand rule.
+ *       The bottom points are (-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+ *       the top points are    (-1, -1,  1), (1, -1,  1), (1, 1,  1), (-1, 1,  1)
+ * @note The order of the gaussian weights in Abaqus is defined as follows:
+ *       (-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1),
+ *       (-1, -1,  1), (1, -1,  1), (-1, 1,  1), (1, 1,  1)
  */
 C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3), gaussWeights(8,1)
 {
     double g = 1.0 / sqrt(3.0);
     gaussPoints << -g, -g, -g,
                     g, -g, -g,
-                   -g,  g, -g,
                     g,  g, -g,
+                   -g,  g, -g,
                    -g, -g,  g,
                     g, -g,  g,
-                   -g,  g,  g,
-                    g,  g,  g;
+                    g,  g,  g,
+                   -g,  g,  g;
                    
 
     double w = 1.0;
@@ -31,6 +37,9 @@ C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3
  * @param[in] s The s-coordinate of the gaussian point.
  * @param[in] t The t-coordinate of the gaussian point.
  * @return The matrix of shape functions.
+ * @note The order of the shape functions is defined by right-hand rule.
+ *       The bottom points are (-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1), 
+ *       the top points are    (-1, -1,  1), (1, -1,  1), (1, 1,  1), (-1, 1,  1)
  */
 Eigen::VectorXd C3D8::calcuShapeFunctions(double r, double s, double t)
 {
@@ -55,6 +64,9 @@ Eigen::VectorXd C3D8::calcuShapeFunctions(double r, double s, double t)
  * @param[in] s The s-coordinate of the gaussian point.
  * @param[in] t The t-coordinate of the gaussian point.
  * @return The matrix of shape function derivatives.
+ * @note The order of the shape functions is defined by right-hand rule.
+ *       The bottom points are (-1, -1, -1), (1, -1, -1), (1, 1, -1), (-1, 1, -1),
+ *       the top points are    (-1, -1,  1), (1, -1,  1), (1, 1,  1), (-1, 1,  1)
  */
 Eigen::MatrixXd C3D8::calcuShapeFunctionDerivatives(double r, double s, double t) 
 {
@@ -88,9 +100,7 @@ Eigen::MatrixXd C3D8::calcuJacobian(const Eigen::MatrixXd& Nrst_diff)
     if (nodeCoorMatrix.rows() != 8 || nodeCoorMatrix.cols() != 3) {
         throw std::invalid_argument("Node coordinates (xyz) must be an 8x3 matrix.");
     }
-
     Eigen::MatrixXd J = Nrst_diff * nodeCoorMatrix;
-
     return J; 
 }
 
@@ -118,6 +128,8 @@ Eigen::MatrixXd C3D8::calcuJacobianInverse(const Eigen::MatrixXd& J)
  * @param[in] s The s-coordinate of the gaussian point.
  * @param[in] t The t-coordinate of the gaussian point.
  * @return The B matrix 6x24.
+ * @note The order of the strains is defined as follows:
+ *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
 Eigen::MatrixXd C3D8::calcuBMatrix(double r, double s, double t) 
 {
@@ -164,6 +176,8 @@ Eigen::MatrixXd C3D8::calcuBMatrix(double r, double s, double t)
  * @param[in] s The s-coordinate of the gaussian point.
  * @param[in] t The t-coordinate of the gaussian point.
  * @return The volumetric B matrix 6x24.
+ * @note The order of the strains is defined as follows:
+ *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
 Eigen::MatrixXd C3D8::calcuBMatrixVolumetric(double r, double s, double t)
 {
@@ -224,6 +238,8 @@ void C3D8::calcuBMatrixVolumetricAverage()
  * @param[in] s The s-coordinate of the gaussian point.
  * @param[in] t The t-coordinate of the gaussian point.
  * @return The corrected B matrix 6x24.
+ * @note The order of the strains is defined as follows:
+ *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
 Eigen::MatrixXd C3D8::calcuBMatrixCorrected(double r, double s, double t)
 {
@@ -259,6 +275,8 @@ Eigen::MatrixXd C3D8::calcuBMatrixCorrected(double r, double s, double t)
  * @param[in] s The s-coordinate of the gaussian point.
  * @param[in] t The t-coordinate of the gaussian point.
  * @return The deviatoric B matrix 6x24.
+ * @note The order of the strains is defined as follows:
+ *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
 Eigen::MatrixXd C3D8::calcuBMatrixDeviatoric(double r, double s, double t)
 {
@@ -357,6 +375,8 @@ Eigen::MatrixXd C3D8::calcuStiffnessMatrix()
  *
  * @param[in] u The displacement vector at all nodes of the element.
  * @return The strain tensor 6x8.
+ * @note The order of the strains is defined as follows:
+ *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
 Eigen::MatrixXd C3D8::calcuStrainTensor(const Eigen::VectorXd& u)
 {
@@ -376,8 +396,10 @@ Eigen::MatrixXd C3D8::calcuStrainTensor(const Eigen::VectorXd& u)
 /**
  * @brief Calculate the stress tensor at all gauss points of the element.
  *
- * @param u The displacement vector at all nodes of the element.
+ * @param[in] u The displacement vector at all nodes of the element.
  * @return The stress tensor 6x8.
+ * @note The order of the strains is defined as follows:
+ *       0: s_11， 1: s_22， 2: s_33， 3: s_12， 4: s_13， 5: s_23
  */
 Eigen::MatrixXd C3D8::calcuStressTensor(const Eigen::VectorXd& u)
 {
