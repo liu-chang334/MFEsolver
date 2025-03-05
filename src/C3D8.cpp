@@ -13,9 +13,9 @@
  *       (-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1),
  *       (-1, -1,  1), (1, -1,  1), (-1, 1,  1), (1, 1,  1)
  */
-C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3), gaussWeights(8,1)
-{
-    double g = 1.0 / sqrt(3.0);
+C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3), gaussWeights(8,1), 
+                                                                extrapolateMatrix(8,8){
+    const double g = 1.0 / sqrt(3.0);
     gaussPoints << -g, -g, -g,
                     g, -g, -g,
                     g,  g, -g,
@@ -26,8 +26,22 @@ C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3
                    -g,  g,  g;
                    
 
-    double w = 1.0;
+    const double w = 1.0;
     gaussWeights << w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w;
+
+    const double Tpp = (5.0 + 3.0 * sqrt(3.0)) / 4.0;
+    const double Tpm = (5.0 - 3.0 * sqrt(3.0)) / 4.0;
+    const double Qpm = (-1.0 + sqrt(3.0)) / 4.0;
+    const double Qmm = (-1.0 - sqrt(3.0)) / 4.0;
+    extrapolateMatrix << 
+        /* Row 0 */ Tpp, Qmm, Qpm, Qmm, Qmm, Qpm, Tpm, Qpm,
+        /* Row 1 */ Qmm, Tpp, Qmm, Qpm, Qpm, Qmm, Qpm, Tpm,
+        /* Row 2 */ Qpm, Qmm, Tpp, Qmm, Tpm, Qpm, Qmm, Qpm,
+        /* Row 3 */ Qmm, Qpm, Qmm, Tpp, Qpm, Tpm, Qpm, Qmm,
+        /* Row 4 */ Qmm, Qpm, Tpm, Qpm, Tpp, Qmm, Qpm, Qmm,
+        /* Row 5 */ Qpm, Qmm, Qpm, Tpm, Qmm, Tpp, Qmm, Qpm,
+        /* Row 6 */ Tpm, Qpm, Qmm, Qpm, Qpm, Qmm, Tpp, Qmm,
+        /* Row 7 */ Qpm, Tpm, Qpm, Qmm, Qmm, Qpm, Qmm, Tpp;
 }
 
 /**
@@ -415,19 +429,10 @@ Eigen::MatrixXd C3D8::calcuStressTensor(const Eigen::VectorXd& u)
  * @param[in] tensor_at_Gpoints The tensor at gauss points 6x8.
  * @return The tensor at nodes 6x8.
  */
-Eigen::MatrixXd C3D8::interpolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints)
+Eigen::MatrixXd C3D8::extrapolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints)
 {
     Eigen::MatrixXd tensor_at_nodes = Eigen::MatrixXd::Zero(6, 8);
-    Eigen::MatrixXd transferMatrix = Eigen::MatrixXd::Zero(8, 8);
-    for (int i = 0; i < 8; i++)
-    {
-        double r = gaussPoints(i, 0);
-        double s = gaussPoints(i, 1);
-        double t = gaussPoints(i, 2);
-        Eigen::VectorXd N = calcuShapeFunctions(r, s, t);
-        transferMatrix.row(i) = N.transpose();
-    }
-    tensor_at_nodes = (transferMatrix.inverse() * tensor_at_Gpoints.transpose()).transpose();
+    tensor_at_nodes = (extrapolateMatrix * tensor_at_Gpoints.transpose()).transpose();
     return tensor_at_nodes;
 }
 

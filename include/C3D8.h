@@ -17,7 +17,9 @@ class C3D8 : public SolidElement
 public:
     Eigen::MatrixXd gaussPoints;
     Eigen::MatrixXd gaussWeights;
+
     Eigen::MatrixXd Bvol_average;
+    Eigen::MatrixXd extrapolateMatrix;
 
 public:
     C3D8(int elemID, int matID = -1);
@@ -36,7 +38,7 @@ public:
     Eigen::MatrixXd calcuStiffnessMatrix();
     Eigen::MatrixXd calcuStrainTensor(const Eigen::VectorXd& u);
     Eigen::MatrixXd calcuStressTensor(const Eigen::VectorXd& u);
-    Eigen::MatrixXd interpolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints);
+    Eigen::MatrixXd extrapolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints);
 };
 
 #endif // C3D8_H

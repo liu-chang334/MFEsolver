@@ -230,7 +230,7 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
     }
     else
     {
-        elemStrain = elem.interpolateTensor(elemStrain);
+        elemStrain = elem.extrapolateTensor(elemStrain);
         return elemStrain;
     }
 }
@@ -263,7 +263,7 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, boo
     }
     else
     {
-        elemStress = elem.interpolateTensor(elemStress);
+        elemStress = elem.extrapolateTensor(elemStress);
         return elemStress;
     }
 }
