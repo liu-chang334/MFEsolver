@@ -72,9 +72,27 @@ void FEDataModelPost::ReadResult(std::string fieldname)
         Tensor = Eigen::MatrixXd::Zero(node, dof);
         Tensor = loadMatrixFromTXT(resultfullpath);
     }
+    if (fieldname == "E_princ")
+    {
+        std::string filename = "PrincipalStrain.txt";
+        std::string resultfullpath = resultpath + "\\" + filename;
+        int node = Node.rows();
+        int dof = 6;
+        Tensor = Eigen::MatrixXd::Zero(node, dof);
+        Tensor = loadMatrixFromTXT(resultfullpath);
+    }
     if (fieldname == "S")
     {
         std::string filename = "Stress.txt";
+        std::string resultfullpath = resultpath + "\\" + filename;
+        int node = Node.rows();
+        int dof = 6;
+        Tensor = Eigen::MatrixXd::Zero(node, dof);
+        Tensor = loadMatrixFromTXT(resultfullpath);
+    }
+    if (fieldname == "S_princ")
+    {
+        std::string filename = "PrincipalStress.txt";
         std::string resultfullpath = resultpath + "\\" + filename;
         int node = Node.rows();
         int dof = 6;
@@ -148,6 +166,16 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
         } 
         ugrid->GetPointData()->AddArray(scalar);
     }
+    if (fieldname == "E_princ")
+    {
+        scalar->SetName("PrincipalStrain");
+        scalar->SetNumberOfComponents(3);
+        for (int i = 0; i < Node.rows(); i++)
+        {
+            scalar->InsertNextTuple3(Tensor(i, 0), Tensor(i, 1), Tensor(i, 2));
+        }
+        ugrid->GetPointData()->AddArray(scalar); 
+    }
     if (fieldname == "S")
     {
         scalar->SetName("Stress");
@@ -157,6 +185,16 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
             scalar->InsertNextTuple6(Tensor(i, 0), Tensor(i, 1), Tensor(i, 2), Tensor(i, 3), Tensor(i, 4), Tensor(i, 5)); 
         } 
         ugrid->GetPointData()->AddArray(scalar);
+    }
+    if (fieldname == "S_princ")
+    {
+        scalar->SetName("PrincipalStress");
+        scalar->SetNumberOfComponents(3);
+        for (int i = 0; i < Node.rows(); i++)
+        {
+            scalar->InsertNextTuple3(Tensor(i, 0), Tensor(i, 1), Tensor(i, 2));
+        }
+        ugrid->GetPointData()->AddArray(scalar); 
     }
 }
 
@@ -258,6 +296,25 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
             calculator->SetResultArrayName("E13"); 
         }
     }
+    if (fieldname == "E_princ")
+    {
+        calculator->AddScalarVariable("E1", "PrincipalStrain", 0);
+        calculator->AddScalarVariable("E2", "PrincipalStrain", 1);
+        calculator->AddScalarVariable("E3", "PrincipalStrain", 2); 
+        if (component == 1)
+        {
+            calculator->SetFunction("E1");
+            calculator->SetResultArrayName("E1");
+        }else if (component == 2)
+        {
+            calculator->SetFunction("E2");
+            calculator->SetResultArrayName("E2");
+        }else if (component == 3)
+        {
+            calculator->SetFunction("E3");
+            calculator->SetResultArrayName("E3");
+        }
+    }
     if (fieldname == "S")
     {
         calculator->AddScalarVariable("S11", "Stress", 0);
@@ -290,6 +347,25 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
         {
             calculator->SetFunction("S23");
             calculator->SetResultArrayName("S23");
+        }
+    }
+    if (fieldname == "S_princ")
+    {
+        calculator->AddScalarVariable("S1", "PrincipalStress", 0);
+        calculator->AddScalarVariable("S2", "PrincipalStress", 1);
+        calculator->AddScalarVariable("S3", "PrincipalStress", 2);
+        if (component == 1) 
+        {
+            calculator->SetFunction("S1");
+            calculator->SetResultArrayName("S1"); 
+        }else if (component == 2)
+        {
+            calculator->SetFunction("S2");
+            calculator->SetResultArrayName("S2");
+        }else if (component == 3)
+        {
+            calculator->SetFunction("S3");
+            calculator->SetResultArrayName("S3");
         }
     }
     calculator->Update();

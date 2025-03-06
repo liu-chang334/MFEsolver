@@ -4,6 +4,7 @@
 #include "include/FiniteElementSolver.h"
 #include "include/Tools.h"
 #include "include/FEdataModelPost.h"
+#include "include/Math.h"
 #include "src/Spinner.cpp"
 
 VTK_MODULE_INIT(vtkRenderingOpenGL2);
@@ -25,9 +26,10 @@ int main()
     // post-process
     FEDataModelPost feaModelPost(feaModel);
     // feaModelPost.FEdataPlotScalar("U", 1);
-    feaModelPost.FEdataPlotScalar("S", 11);
+    // feaModelPost.FEdataPlotScalar("S", 11);
     // feaModelPost.FEdataPlotScalar("E", 11);
-
+    feaModelPost.FEdataPlotScalar("S_princ", 1);
+    // feaModelPost.FEdataPlotScalar("E_princ", 1);
 
     return 0;
 }
