@@ -107,7 +107,7 @@ void saveMatrix2TXT(std::vector<Eigen::VectorXd>& matrix, const std::string& fil
                     << matrix[i](j);
 
                 if (j < matrix[i].size() - 1) {
-                    file << ",";
+                    file << " ";
                 }
             } 
             file << "\n";
@@ -163,6 +163,7 @@ Eigen::MatrixXd loadMatrixFromTXT(const std::string& filepath)
     if(!file.is_open())
     {
         std::cerr << "Error: cannot open file " << filepath << std::endl;
+        return Eigen::MatrixXd();
     }
 
     std::vector<std::vector<double>> data;
@@ -185,6 +186,7 @@ Eigen::MatrixXd loadMatrixFromTXT(const std::string& filepath)
             }else if(row.size() != cols)
             {
                 std::cerr << "Error: inconsistent number of columns in file " << filepath << std::endl;
+                return Eigen::MatrixXd();
             }
             data.push_back(row);
         }

@@ -20,13 +20,17 @@ FEDataModelPost::FEDataModelPost(FiniteElementModel feModel)
  * @note The color map is cool to warm color map
  */
 void ApplyParaViewColorMap(vtkMapper* mapper, const double range[2]) {
-    vtkNew<vtkColorTransferFunction> colorTransferFunction;
-    colorTransferFunction->SetColorSpaceToDiverging();
-    colorTransferFunction->AddRGBPoint(range[0], 0.231, 0.298, 0.753); // cool
-    colorTransferFunction->AddRGBPoint((range[0] + range[1]) / 2, 0.865, 0.865, 0.865); // white
-    colorTransferFunction->AddRGBPoint(range[1], 0.706, 0.016, 0.150); // warm
+    vtkNew<vtkDiscretizableColorTransferFunction> ctf;
+    ctf->SetColorSpaceToDiverging();
 
-    mapper->SetLookupTable(colorTransferFunction);
+    ctf->AddRGBPoint(range[0],               0.231, 0.298, 0.753); 
+    // ctf->AddRGBPoint(0.4*(range[0]+range[1]),0.865, 0.865, 0.865);
+    ctf->AddRGBPoint(range[1],               0.706, 0.016, 0.150);
+    
+    ctf->DiscretizeOn();
+    ctf->SetNumberOfValues(10); 
+
+    mapper->SetLookupTable(ctf);
     mapper->UseLookupTableScalarRangeOn();
 }
 
@@ -59,9 +63,19 @@ void FEDataModelPost::ReadResult(std::string fieldname)
             Displacement(i, 2) = result(3*i+2, 0);
         }
     }
+    if (fieldname == "E")
+    {
+        std::string filename = "Strain.txt";
+        std::string resultfullpath = resultpath + "\\" + filename;
+        Strain = loadMatrixFromTXT(resultfullpath);
+        // the strain matrix is already (node, 6)
+        // Strain = result;
+    }
     if (fieldname == "S")
     {
-        std::cout << "Stress plotting is not implemented yet" << std::endl;
+        std::string filename = "Stress.txt";
+        std::string resultfullpath = resultpath + "\\" + filename;
+        Stress = loadMatrixFromTXT(resultfullpath);
     }
 }
 
@@ -118,8 +132,28 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
         {
             scalar->InsertNextTuple3(Displacement(i, 0), Displacement(i, 1), Displacement(i, 2));
         }
+        ugrid->GetPointData()->SetVectors(scalar);
     }
-    ugrid->GetPointData()->SetVectors(scalar);
+    if (fieldname == "E")
+    {
+        scalar->SetName("Strain");
+        scalar->SetNumberOfComponents(6);
+        for (int i = 0; i < Node.rows(); i++)
+        {
+            scalar->InsertNextTuple6(Strain(i, 0), Strain(i, 1), Strain(i, 2), Strain(i, 3), Strain(i, 4), Strain(i, 5)); 
+        } 
+        ugrid->GetPointData()->AddArray(scalar);
+    }
+    if (fieldname == "S")
+    {
+        scalar->SetName("Stress");
+        scalar->SetNumberOfComponents(6);
+        for (int i = 0; i < Node.rows(); i++)
+        {
+            scalar->InsertNextTuple6(Stress(i, 0), Stress(i, 1), Stress(i, 2), Stress(i, 3), Stress(i, 4), Stress(i, 5)); 
+        } 
+        ugrid->GetPointData()->AddArray(scalar);
+    }
 }
 
 /**
@@ -175,19 +209,83 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
     calculator->SetAttributeTypeToPointData();
     if (fieldname == "U")
     {
-        calculator->AddVectorArrayName("Displacement");
+        calculator->AddVectorArrayName("U");
         if (component == 1)
         {
-            calculator->SetFunction("Displacement[0]");
-            calculator->SetResultArrayName("DisplacementX");
+            calculator->SetFunction("U[0]");
+            calculator->SetResultArrayName("U1");
         }else if (component == 2)
         {
-            calculator->SetFunction("Displacement[1]");
-            calculator->SetResultArrayName("DisplacementY");
+            calculator->SetFunction("U[1]");
+            calculator->SetResultArrayName("U2");
         }else if (component == 3)
         {
-            calculator->SetFunction("Displacement[2]");
-            calculator->SetResultArrayName("DisplacementZ");
+            calculator->SetFunction("U[2]");
+            calculator->SetResultArrayName("U3");
+        }
+    }
+    if (fieldname == "E")
+    {
+        calculator->AddScalarVariable("E11", "Strain", 0);
+        calculator->AddScalarVariable("E22", "Strain", 1);
+        calculator->AddScalarVariable("E33", "Strain", 2);
+        calculator->AddScalarVariable("E12", "Strain", 3);
+        calculator->AddScalarVariable("E13", "Strain", 4);
+        calculator->AddScalarVariable("E23", "Strain", 5);
+        if (component == 11)
+        {
+            calculator->SetFunction("E11");
+            calculator->SetResultArrayName("E11");
+        }else if (component == 22)
+        {
+            calculator->SetFunction("E22");
+            calculator->SetResultArrayName("E22"); 
+        }else if (component == 33)
+        {
+            calculator->SetFunction("E33");
+            calculator->SetResultArrayName("E33");
+        }else if (component == 12)
+        {
+            calculator->SetFunction("E12");
+            calculator->SetResultArrayName("E12");
+        }else if (component == 13)
+        {
+            calculator->SetFunction("E13");
+            calculator->SetResultArrayName("E13"); 
+        }
+    }
+    if (fieldname == "S")
+    {
+        calculator->AddScalarVariable("S11", "Stress", 0);
+        calculator->AddScalarVariable("S22", "Stress", 1);
+        calculator->AddScalarVariable("S33", "Stress", 2);
+        calculator->AddScalarVariable("S12", "Stress", 3);
+        calculator->AddScalarVariable("S13", "Stress", 4);
+        calculator->AddScalarVariable("S23", "Stress", 5);
+        if (component == 11)
+        {
+            calculator->SetFunction("S11");
+            calculator->SetResultArrayName("S11");
+        }else if (component == 22)
+        {
+            calculator->SetFunction("S22");
+            calculator->SetResultArrayName("S22"); 
+        }else if (component == 33)
+        {
+            calculator->SetFunction("S33");
+            calculator->SetResultArrayName("S33");
+        }else if (component == 12)
+        {
+            calculator->SetFunction("S12");
+            calculator->SetResultArrayName("S12"); 
+        }else if (component == 13)
+        {
+            calculator->SetFunction("S13");
+            calculator->SetResultArrayName("S13");
+        }else if (component == 23)
+        {
+            calculator->SetFunction("S23");
+            calculator->SetResultArrayName("S23");
         }
     }
     calculator->Update();
@@ -221,10 +319,13 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
     renderer->SetBackground(colors->GetColor3d("SlateGray").GetData());
 
     vtkNew<vtkScalarBarActor> scalarBar;
+    scalarBar->UnconstrainedFontSizeOn(); 
     scalarBar->SetLookupTable(mapper->GetLookupTable());
     scalarBar->SetTitle(resultarrayname.c_str());
+    scalarBar->GetTitleTextProperty()->SetFontSize(30);
     scalarBar->SetNumberOfLabels(10);
     scalarBar->SetLabelFormat("%.3e");
+    scalarBar->GetLabelTextProperty()->SetFontSize(24);
     renderer->AddActor2D(scalarBar);
 
     vtkNew<vtkRenderWindow> renderWindow;

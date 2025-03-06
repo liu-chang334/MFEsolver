@@ -129,7 +129,7 @@ void FiniteElementSolver::applyBoundaryConditions()
  * and apply the boundary conditions, then solve the linear system
  * @note The method is solve the linear system by LU decomposition now
  */
-void FiniteElementSolver::solve()
+void FiniteElementSolver::solve_U()
 {
     {
         Spinner spinner(
@@ -278,7 +278,7 @@ void FiniteElementSolver::calcuAllElementStrain(bool extrapolatetoNodes, bool is
     int numElements = static_cast<int>(feModel.Element.rows());
     for (int i = 0; i < numElements; i++)
     {
-        Eigen::MatrixXd elemStrain = calcuElementStrain(i + 1, false);
+        Eigen::MatrixXd elemStrain = calcuElementStrain(i + 1, extrapolatetoNodes);
         AllStrain.push_back(elemStrain);
     }
     if (is_write)
@@ -296,7 +296,7 @@ void FiniteElementSolver::calcuAllElementStress(bool extrapolatetoNodes, bool is
     int numElements = static_cast<int>(feModel.Element.rows());
     for (int i = 0; i < numElements; i++)
     {
-        Eigen::MatrixXd elemStress = calcuElementStress(i + 1, false);
+        Eigen::MatrixXd elemStress = calcuElementStress(i + 1, extrapolatetoNodes);
         AllStress.push_back(elemStress);
     }
     if (is_write)
@@ -342,7 +342,7 @@ void FiniteElementSolver::avgStrainAtNodes(bool is_write)
         std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
         if (std::filesystem::exists(resultpath))
         {
-            saveMatrix2TXT(Strain_avg_at_node, resultpath, "Strain_avg_at_nodes.txt");
+            saveMatrix2TXT(Strain_avg_at_node, resultpath, "Strain.txt");
         } 
     }
 }
@@ -379,7 +379,21 @@ void FiniteElementSolver::avgStressAtNodes(bool is_write)
         std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
         if (std::filesystem::exists(resultpath))
         {
-            saveMatrix2TXT(Stress_avg_at_node, resultpath, "Stress_avg_at_nodes.txt");
+            saveMatrix2TXT(Stress_avg_at_node, resultpath, "Stress.txt");
         } 
+    }
+}
+
+void FiniteElementSolver::solve()
+{
+    solve_U();
+    {
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Calculating strain and stress: ",
+            "Strain and stress calculation time: ", 100);
+        calcuAllElementStrain();
+        calcuAllElementStress();
+        avgStrainAtNodes();
+        avgStressAtNodes(); 
     }
 }

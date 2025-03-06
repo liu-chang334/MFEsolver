@@ -23,6 +23,9 @@
 #include <vtkPointData.h> 
 #include <vtkArrayCalculator.h>
 #include <vtkColorTransferFunction.h>
+#include <vtkDiscretizableColorTransferFunction.h>
+#include <vtkTextProperty.h>
+
 #include <Eigen/Dense>
 #include "FiniteElementModel.h"    
 #include "Tools.h"

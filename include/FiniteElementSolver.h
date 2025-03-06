@@ -31,14 +31,15 @@ public:
     void assembleStiffnessMatrix();
     void assembleForceVector();
     void applyBoundaryConditions();
+    void solve_U();
     void solve();
 
     Eigen::VectorXd getElementNodesDisplacement(const int elementID);
 
     Eigen::MatrixXd calcuElementStrain(const int elementID, bool extrapolatetoNodes = true);
     Eigen::MatrixXd calcuElementStress(const int elementID, bool extrapolatetoNodes = true); 
-    void calcuAllElementStrain(bool extrapolatetoNodes = true, bool is_write = true);
-    void calcuAllElementStress(bool extrapolatetoNodes = true, bool is_write = true);  
+    void calcuAllElementStrain(bool extrapolatetoNodes = true, bool is_write = false);
+    void calcuAllElementStress(bool extrapolatetoNodes = true, bool is_write = false);  
     void avgStrainAtNodes(bool is_write = true);
     void avgStressAtNodes(bool is_write = true);
     
