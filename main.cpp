@@ -24,7 +24,9 @@ int main()
     
     // post-process
     FEDataModelPost feaModelPost(feaModel);
-    feaModelPost.FEdataPlotScalar("E", 22);
+    // feaModelPost.FEdataPlotScalar("U", 1);
+    feaModelPost.FEdataPlotScalar("S", 11);
+    // feaModelPost.FEdataPlotScalar("E", 11);
 
 
     return 0;

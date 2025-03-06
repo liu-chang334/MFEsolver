@@ -242,10 +242,9 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
  * @return Eigen::MatrixXd Stress tensor at gauss points defaultly at gauss points,
  *      if interpolatetoNodes is true, the stress tensor is interpolated to nodes
  */
-Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, bool extrapolatetoNodes)
+std::pair<Eigen::MatrixXd, Eigen::MatrixXd> FiniteElementSolver::calcuElementStress(const int elementID, bool extrapolatetoNodes)
 {
     Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
-    Eigen::MatrixXd elemStress = Eigen::MatrixXd::Zero(6, 8);
     // get the element nodes coordinates matrix
     Eigen::VectorXi elemnode = feModel.Element.row(elementID - 1);
     Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3);
@@ -256,15 +255,17 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, boo
     C3D8 elem(elementID);
     elem.setMaterialByYoungPoisson(feModel.Material(0, 0), feModel.Material(0, 1));
     elem.setNodes(elemnode, elemnodeCoor);
-    elemStress = elem.calcuStressTensor(elemU);
+    // elemStress = elem.calcuStressTensor(elemU);
+    auto[elemStrain, elemStress] = elem.calcuStrainStressTensor(elemU);
     if (!extrapolatetoNodes)
     {
-        return elemStress;
+        return std::make_pair(elemStrain, elemStress);
     }
     else
     {
+        elemStrain = elem.extrapolateTensor(elemStrain);
         elemStress = elem.extrapolateTensor(elemStress);
-        return elemStress;
+        return std::make_pair(elemStrain, elemStress);
     }
 }
 
@@ -275,36 +276,41 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStress(const int elementID, boo
  */
 void FiniteElementSolver::calcuAllElementStrain(bool extrapolatetoNodes, bool is_write)
 {
+    tmp_matrix1.clear();
     int numElements = static_cast<int>(feModel.Element.rows());
     for (int i = 0; i < numElements; i++)
     {
         Eigen::MatrixXd elemStrain = calcuElementStrain(i + 1, extrapolatetoNodes);
-        AllStrain.push_back(elemStrain);
+        tmp_matrix1.push_back(elemStrain);
     }
     if (is_write)
     {
         std::string current_path = std::filesystem::current_path().string();
         std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
         if (std::filesystem::exists(resultpath)){
-            saveMatrix2TXT(AllStrain, resultpath, "Strain_at_nodes.txt");
+            saveMatrix2TXT(tmp_matrix1, resultpath, "Strain_at_nodes.txt");
         }
     }
 }
 
 void FiniteElementSolver::calcuAllElementStress(bool extrapolatetoNodes, bool is_write)
 {
+    tmp_matrix1.clear();
+    tmp_matrix2.clear();
     int numElements = static_cast<int>(feModel.Element.rows());
     for (int i = 0; i < numElements; i++)
     {
-        Eigen::MatrixXd elemStress = calcuElementStress(i + 1, extrapolatetoNodes);
-        AllStress.push_back(elemStress);
+        auto[elemStrain, elemStress] = calcuElementStress(i + 1, extrapolatetoNodes);
+        tmp_matrix1.push_back(elemStrain);
+        tmp_matrix2.push_back(elemStress);
     }
     if (is_write)
     {
         std::string current_path = std::filesystem::current_path().string();
         std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
         if (std::filesystem::exists(resultpath)){
-            saveMatrix2TXT(AllStress, resultpath, "Stress_at_nodes.txt");
+            saveMatrix2TXT(tmp_matrix1, resultpath, "Strain_at_nodes.txt");
+            saveMatrix2TXT(tmp_matrix2, resultpath, "Stress_at_nodes.txt");
         }
     }
 }
@@ -323,18 +329,18 @@ void FiniteElementSolver::avgStrainAtNodes(bool is_write)
         for(int k = 0; k < 8; k++)
         {
             int nodeId = elemNodes(k) - 1; // 转成 0-based index
-            sumStrain_at_node[nodeId] += AllStrain[j].col(k);
+            sumStrain_at_node[nodeId] += tmp_matrix1[j].col(k);
             count_at_node[nodeId]++;
         }
     }
 
-    Strain_avg_at_node.clear();
-    Strain_avg_at_node.reserve(numNodes);
+    Tensor.clear();
+    Tensor.reserve(numNodes);
 
     for(int i = 0; i < numNodes; i++)
     {
         Eigen::VectorXd avgStrain = sumStrain_at_node[i] / double(count_at_node[i]);
-        Strain_avg_at_node.push_back(avgStrain);
+        Tensor.push_back(avgStrain);
     }
     if(is_write)
     {
@@ -342,7 +348,7 @@ void FiniteElementSolver::avgStrainAtNodes(bool is_write)
         std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
         if (std::filesystem::exists(resultpath))
         {
-            saveMatrix2TXT(Strain_avg_at_node, resultpath, "Strain.txt");
+            saveMatrix2TXT(Tensor, resultpath, "Strain.txt");
         } 
     }
 }
@@ -361,17 +367,17 @@ void FiniteElementSolver::avgStressAtNodes(bool is_write)
         for(int k = 0; k < 8; k++)
         {
             int nodeId = elemNodes(k) - 1; // 转成 0-based index
-            sumStress_at_node[nodeId] += AllStress[j].col(k);
+            sumStress_at_node[nodeId] += tmp_matrix2[j].col(k);
             count_at_node[nodeId]++; 
         } 
     } 
-    Stress_avg_at_node.clear();
-    Stress_avg_at_node.reserve(numNodes);
+    Tensor.clear();
+    Tensor.reserve(numNodes);
 
     for(int i = 0; i < numNodes; i++)
     {
         Eigen::VectorXd avgStress = sumStress_at_node[i] / double(count_at_node[i]);
-        Stress_avg_at_node.push_back(avgStress);
+        Tensor.push_back(avgStress);
     }
     if(is_write)
     {
@@ -379,7 +385,7 @@ void FiniteElementSolver::avgStressAtNodes(bool is_write)
         std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
         if (std::filesystem::exists(resultpath))
         {
-            saveMatrix2TXT(Stress_avg_at_node, resultpath, "Stress.txt");
+            saveMatrix2TXT(Tensor, resultpath, "Stress.txt");
         } 
     }
 }
@@ -387,11 +393,12 @@ void FiniteElementSolver::avgStressAtNodes(bool is_write)
 void FiniteElementSolver::solve()
 {
     solve_U();
+
     {
         Spinner spinner(
             "\033[1;32m[Process]\033[0m Calculating strain and stress: ",
             "Strain and stress calculation time: ", 100);
-        calcuAllElementStrain();
+
         calcuAllElementStress();
         avgStrainAtNodes();
         avgStressAtNodes(); 

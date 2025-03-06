@@ -38,6 +38,7 @@ public:
     Eigen::MatrixXd calcuStiffnessMatrix();
     Eigen::MatrixXd calcuStrainTensor(const Eigen::VectorXd& u);
     Eigen::MatrixXd calcuStressTensor(const Eigen::VectorXd& u);
+    std::pair<Eigen::MatrixXd, Eigen::MatrixXd> calcuStrainStressTensor(const Eigen::VectorXd& u);
     Eigen::MatrixXd extrapolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints);
 };
 

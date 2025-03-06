@@ -34,10 +34,8 @@ class FEDataModelPost{
 public:
     Eigen::MatrixXd Node;
     Eigen::MatrixXi Element;
-    Eigen::MatrixXd Displacement;
-    Eigen::MatrixXd Stress;
-    Eigen::MatrixXd Strain;
-    
+    Eigen::MatrixXd Tensor;
+
     vtkNew<vtkPoints> points;
     vtkNew<vtkUnstructuredGrid> ugrid;
     vtkNew<vtkDoubleArray> scalar;

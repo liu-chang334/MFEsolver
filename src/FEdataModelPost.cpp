@@ -24,11 +24,11 @@ void ApplyParaViewColorMap(vtkMapper* mapper, const double range[2]) {
     ctf->SetColorSpaceToDiverging();
 
     ctf->AddRGBPoint(range[0],               0.231, 0.298, 0.753); 
-    // ctf->AddRGBPoint(0.4*(range[0]+range[1]),0.865, 0.865, 0.865);
+    ctf->AddRGBPoint(0.4*(range[0]+range[1]),0.865, 0.865, 0.865);
     ctf->AddRGBPoint(range[1],               0.706, 0.016, 0.150);
     
-    ctf->DiscretizeOn();
-    ctf->SetNumberOfValues(10); 
+    // ctf->DiscretizeOn();
+    // ctf->SetNumberOfValues(5); 
 
     mapper->SetLookupTable(ctf);
     mapper->UseLookupTableScalarRangeOn();
@@ -55,27 +55,31 @@ void FEDataModelPost::ReadResult(std::string fieldname)
         // transform the displacement (3*node, 1) to (node, 3) 
         int node = Node.rows();
         int dof = 3;
-        Displacement = Eigen::MatrixXd::Zero(node, dof);
+        Tensor = Eigen::MatrixXd::Zero(node, dof);
         for (int i = 0; i < node; i++)
         {
-            Displacement(i, 0) = result(3*i, 0);
-            Displacement(i, 1) = result(3*i+1, 0);
-            Displacement(i, 2) = result(3*i+2, 0);
+            Tensor(i, 0) = result(3*i, 0);
+            Tensor(i, 1) = result(3*i+1, 0);
+            Tensor(i, 2) = result(3*i+2, 0);
         }
     }
     if (fieldname == "E")
     {
         std::string filename = "Strain.txt";
         std::string resultfullpath = resultpath + "\\" + filename;
-        Strain = loadMatrixFromTXT(resultfullpath);
-        // the strain matrix is already (node, 6)
-        // Strain = result;
+        int node = Node.rows();
+        int dof = 6;
+        Tensor = Eigen::MatrixXd::Zero(node, dof);
+        Tensor = loadMatrixFromTXT(resultfullpath);
     }
     if (fieldname == "S")
     {
         std::string filename = "Stress.txt";
         std::string resultfullpath = resultpath + "\\" + filename;
-        Stress = loadMatrixFromTXT(resultfullpath);
+        int node = Node.rows();
+        int dof = 6;
+        Tensor = Eigen::MatrixXd::Zero(node, dof);
+        Tensor = loadMatrixFromTXT(resultfullpath);
     }
 }
 
@@ -130,7 +134,7 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
         scalar->SetNumberOfComponents(3);
         for (int i = 0; i < Node.rows(); i++)
         {
-            scalar->InsertNextTuple3(Displacement(i, 0), Displacement(i, 1), Displacement(i, 2));
+            scalar->InsertNextTuple3(Tensor(i, 0), Tensor(i, 1), Tensor(i, 2));
         }
         ugrid->GetPointData()->SetVectors(scalar);
     }
@@ -140,7 +144,7 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
         scalar->SetNumberOfComponents(6);
         for (int i = 0; i < Node.rows(); i++)
         {
-            scalar->InsertNextTuple6(Strain(i, 0), Strain(i, 1), Strain(i, 2), Strain(i, 3), Strain(i, 4), Strain(i, 5)); 
+            scalar->InsertNextTuple6(Tensor(i, 0), Tensor(i, 1), Tensor(i, 2), Tensor(i, 3), Tensor(i, 4), Tensor(i, 5)); 
         } 
         ugrid->GetPointData()->AddArray(scalar);
     }
@@ -150,7 +154,7 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
         scalar->SetNumberOfComponents(6);
         for (int i = 0; i < Node.rows(); i++)
         {
-            scalar->InsertNextTuple6(Stress(i, 0), Stress(i, 1), Stress(i, 2), Stress(i, 3), Stress(i, 4), Stress(i, 5)); 
+            scalar->InsertNextTuple6(Tensor(i, 0), Tensor(i, 1), Tensor(i, 2), Tensor(i, 3), Tensor(i, 4), Tensor(i, 5)); 
         } 
         ugrid->GetPointData()->AddArray(scalar);
     }
@@ -209,18 +213,18 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
     calculator->SetAttributeTypeToPointData();
     if (fieldname == "U")
     {
-        calculator->AddVectorArrayName("U");
+        calculator->AddVectorArrayName("Displacement");
         if (component == 1)
         {
-            calculator->SetFunction("U[0]");
+            calculator->SetFunction("Displacement[0]");
             calculator->SetResultArrayName("U1");
         }else if (component == 2)
         {
-            calculator->SetFunction("U[1]");
+            calculator->SetFunction("Displacement[1]");
             calculator->SetResultArrayName("U2");
         }else if (component == 3)
         {
-            calculator->SetFunction("U[2]");
+            calculator->SetFunction("Displacement[2]");
             calculator->SetResultArrayName("U3");
         }
     }

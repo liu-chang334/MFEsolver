@@ -423,6 +423,14 @@ Eigen::MatrixXd C3D8::calcuStressTensor(const Eigen::VectorXd& u)
     return stress;
 }
 
+std::pair<Eigen::MatrixXd, Eigen::MatrixXd> C3D8::calcuStrainStressTensor(const Eigen::VectorXd& u)
+{
+    Eigen::MatrixXd D = calcuConstitutiveMatrix();
+    Eigen::MatrixXd strain = calcuStrainTensor(u);
+    Eigen::MatrixXd stress = D * strain;
+    return std::make_pair(strain, stress); 
+}
+
 /**
  * @brief Interpolate a tensor from gauss points to nodes.
  *
