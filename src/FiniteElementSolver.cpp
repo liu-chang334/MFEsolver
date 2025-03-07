@@ -329,8 +329,19 @@ void FiniteElementSolver::calcuAllElementStress(bool extrapolatetoNodes, bool is
             tmp_matrix1.push_back(elemStrain);
             tmp_matrix2.push_back(elemStress);
         }else{
-            Eigen::MatrixXd elemStrain, elemStress, principalStrain, principalStress;
-            calcuElementPrincipalStress(i + 1, elemStrain, elemStress, principalStrain, principalStress, extrapolatetoNodes);
+            // Method-1: calculate principal strain and stress at gauss points and then extrapolate to nodes
+            // Eigen::MatrixXd elemStrain, elemStress, principalStrain, principalStress;
+            // calcuElementPrincipalStress(i + 1, elemStrain, elemStress, principalStrain, principalStress, extrapolatetoNodes);
+            // tmp_matrix1.push_back(elemStrain);
+            // tmp_matrix2.push_back(elemStress);
+            // tmp_matrix3.push_back(principalStrain);
+            // tmp_matrix4.push_back(principalStress);
+
+            // Method-2: extrapolate strain and stress to nodes first, then calculate principal strain and stress at nodes
+            auto[elemStrain, elemStress] = calcuElementStress(i + 1, true);
+            Eigen::MatrixXd principalStrain, principalStress;
+            principalStrain = compute_tensor6x8_principal(elemStrain);
+            principalStress = compute_tensor6x8_principal(elemStress);
             tmp_matrix1.push_back(elemStrain);
             tmp_matrix2.push_back(elemStress);
             tmp_matrix3.push_back(principalStrain);
@@ -393,6 +404,7 @@ void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& f
         }
     }
 }
+
 void FiniteElementSolver::solve()
 {
     solve_U();
