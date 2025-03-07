@@ -55,5 +55,7 @@ public:
     void FEdataSetGridScalar(std::string fieldname);
     void FEdataPlot();
     void FEdataPlotScalar(std::string fieldname, int component);
+
+    void clear();
 };
 #endif

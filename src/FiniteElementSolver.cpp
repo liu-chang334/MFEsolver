@@ -305,21 +305,22 @@ void FiniteElementSolver::calcuElementPrincipalStress(const int elementID, Eigen
  */
 void FiniteElementSolver::calcuAllElementStrain(bool extrapolatetoNodes)
 {
-    tmp_matrix1.clear();
+    std::vector<Eigen::MatrixXd> tmp_matrix1;
     int numElements = static_cast<int>(feModel.Element.rows());
     for (int i = 0; i < numElements; i++)
     {
         Eigen::MatrixXd elemStrain = calcuElementStrain(i + 1, extrapolatetoNodes);
         tmp_matrix1.push_back(elemStrain);
     }
+    tmp_matrices.push_back(tmp_matrix1);
 }
 
 void FiniteElementSolver::calcuAllElementStress(bool extrapolatetoNodes, bool is_principal)
 {
-    tmp_matrix1.clear();
-    tmp_matrix2.clear();
-    tmp_matrix3.clear();
-    tmp_matrix4.clear();
+    std::vector<Eigen::MatrixXd> tmp_matrix1;
+    std::vector<Eigen::MatrixXd> tmp_matrix2;
+    std::vector<Eigen::MatrixXd> tmp_matrix3;
+    std::vector<Eigen::MatrixXd> tmp_matrix4;
     int numElements = static_cast<int>(feModel.Element.rows());
     for (int i = 0; i < numElements; i++)
     {
@@ -336,154 +337,60 @@ void FiniteElementSolver::calcuAllElementStress(bool extrapolatetoNodes, bool is
             tmp_matrix4.push_back(principalStress);
         }
     }
+    tmp_matrices.push_back(tmp_matrix1);
+    tmp_matrices.push_back(tmp_matrix2);
+    tmp_matrices.push_back(tmp_matrix3);
+    tmp_matrices.push_back(tmp_matrix4);
 }
 
-void FiniteElementSolver::avgStrainAtNodes(bool is_write)
+void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& filename, bool is_write)
 {
     int numNodes    = static_cast<int>(feModel.Node.rows());
     int numElements = static_cast<int>(feModel.Element.rows());
 
-    std::vector<Eigen::VectorXd> sumStrain_at_node(numNodes, Eigen::VectorXd::Zero(6));
-    std::vector<int> count_at_node(numNodes, 0);
+    if (matrix_index < 0 || matrix_index >= static_cast<int>(tmp_matrices.size()))
+    {
+        std::cerr << "Error: matrix_index " << matrix_index << " out of range!" << std::endl;
+        return;
+    }
 
-    for(int j = 0; j < numElements; j++)
+    std::vector<Eigen::VectorXd> sumField_at_node(numNodes, Eigen::VectorXd::Zero(6));
+    std::vector<int> count_at_node(numNodes, 0);
+    
+    for (int j = 0; j < numElements; j++)
     {
         Eigen::VectorXi elemNodes = feModel.Element.row(j);
-        for(int k = 0; k < 8; k++)
+        for (int k = 0; k < 8; k++)
         {
-            int nodeId = elemNodes(k) - 1; // 转成 0-based index
-            sumStrain_at_node[nodeId] += tmp_matrix1[j].col(k);
+            int nodeId = elemNodes(k) - 1; // Transform to 0-based index
+            sumField_at_node[nodeId] += tmp_matrices[matrix_index][j].col(k);
             count_at_node[nodeId]++;
+        }
+    }    
+
+    Tensor.clear();
+
+    for (int i = 0; i < numNodes; i++)
+    {
+        if (count_at_node[i] > 0)
+        {
+            Tensor.push_back(sumField_at_node[i] / double(count_at_node[i]));
+        }
+        else
+        {
+            Tensor.push_back(Eigen::VectorXd::Zero(6));
+            std::cerr << "Warning: node " << i + 1 << " has no elements!" << std::endl;
         }
     }
 
-    Tensor.clear();
-    Tensor.reserve(numNodes);
-
-    for(int i = 0; i < numNodes; i++)
-    {
-        Eigen::VectorXd avgStrain = sumStrain_at_node[i] / double(count_at_node[i]);
-        Tensor.push_back(avgStrain);
-    }
-    if(is_write)
+    if (is_write)
     {
         std::string current_path = std::filesystem::current_path().string();
         std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
         if (std::filesystem::exists(resultpath))
         {
-            saveMatrix2TXT(Tensor, resultpath, "Strain.txt");
-        } 
-    }
-}
-
-void FiniteElementSolver::avgStressAtNodes(bool is_write)
-{
-    int numNodes    = static_cast<int>(feModel.Node.rows());
-    int numElements = static_cast<int>(feModel.Element.rows());
-
-    std::vector<Eigen::VectorXd> sumStress_at_node(numNodes, Eigen::VectorXd::Zero(6));
-    std::vector<int> count_at_node(numNodes, 0);
-
-    for(int j = 0; j < numElements; j++)
-    {
-        Eigen::VectorXi elemNodes = feModel.Element.row(j);
-        for(int k = 0; k < 8; k++)
-        {
-            int nodeId = elemNodes(k) - 1; // 转成 0-based index
-            sumStress_at_node[nodeId] += tmp_matrix2[j].col(k);
-            count_at_node[nodeId]++; 
-        } 
-    } 
-    Tensor.clear();
-    Tensor.reserve(numNodes);
-
-    for(int i = 0; i < numNodes; i++)
-    {
-        Eigen::VectorXd avgStress = sumStress_at_node[i] / double(count_at_node[i]);
-        Tensor.push_back(avgStress);
-    }
-    if(is_write)
-    {
-        std::string current_path = std::filesystem::current_path().string();
-        std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
-        if (std::filesystem::exists(resultpath))
-        {
-            saveMatrix2TXT(Tensor, resultpath, "Stress.txt");
-        } 
-    }
-}
-
-void FiniteElementSolver::avgPrincipalStrainAtNodes(bool is_write)
-{
-    int numNodes    = static_cast<int>(feModel.Node.rows());
-    int numElements = static_cast<int>(feModel.Element.rows());
-
-    std::vector<Eigen::VectorXd> sumPrincipalStrain_at_node(numNodes, Eigen::VectorXd::Zero(6));
-    std::vector<int> count_at_node(numNodes, 0);
-
-    for(int j = 0; j < numElements; j++)
-    {
-        Eigen::VectorXi elemNodes = feModel.Element.row(j);
-        for(int k = 0; k < 8; k++)
-        {
-            int nodeId = elemNodes(k) - 1; // 转成 0-based index
-            sumPrincipalStrain_at_node[nodeId] += tmp_matrix3[j].col(k);
-            count_at_node[nodeId]++; 
-        } 
-    } 
-    Tensor.clear();
-    Tensor.reserve(numNodes);
-
-    for(int i = 0; i < numNodes; i++)
-    {
-        Eigen::VectorXd avgPrincipalStrain = sumPrincipalStrain_at_node[i] / double(count_at_node[i]);
-        Tensor.push_back(avgPrincipalStrain);
-    }
-    if(is_write)
-    {
-        std::string current_path = std::filesystem::current_path().string();
-        std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
-        if (std::filesystem::exists(resultpath))
-        {
-            saveMatrix2TXT(Tensor, resultpath, "PrincipalStrain.txt");
-        } 
-    }
-}
-
-void FiniteElementSolver::avgPrincipalStressAtNodes(bool is_write)
-{
-    int numNodes    = static_cast<int>(feModel.Node.rows());
-    int numElements = static_cast<int>(feModel.Element.rows());
-
-    std::vector<Eigen::VectorXd> sumPrincipalStress_at_node(numNodes, Eigen::VectorXd::Zero(6));
-    std::vector<int> count_at_node(numNodes, 0);
-
-    for(int j = 0; j < numElements; j++)
-    {
-        Eigen::VectorXi elemNodes = feModel.Element.row(j);
-        for(int k = 0; k < 8; k++)
-        {
-            int nodeId = elemNodes(k) - 1; // 转成 0-based index
-            sumPrincipalStress_at_node[nodeId] += tmp_matrix4[j].col(k);
-            count_at_node[nodeId]++; 
-        } 
-    } 
-    Tensor.clear();
-    Tensor.reserve(numNodes);
-
-    for(int i = 0; i < numNodes; i++)
-    {
-        Eigen::VectorXd avgPrincipalStress = sumPrincipalStress_at_node[i] / double(count_at_node[i]);
-        Tensor.push_back(avgPrincipalStress);
-    }
-    if(is_write)
-    {
-        std::string current_path = std::filesystem::current_path().string();
-        std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
-        if (std::filesystem::exists(resultpath))
-        {
-            saveMatrix2TXT(Tensor, resultpath, "PrincipalStress.txt");
-        } 
+            saveMatrix2TXT(Tensor, resultpath, filename);
+        }
     }
 }
 void FiniteElementSolver::solve()
@@ -496,9 +403,10 @@ void FiniteElementSolver::solve()
             "Strain and stress calculation time: ", 100);
 
         calcuAllElementStress(true, true);
-        avgStrainAtNodes();
-        avgStressAtNodes(); 
-        avgPrincipalStrainAtNodes();
-        avgPrincipalStressAtNodes();
+        std::vector<std::string> filenames = {"Strain.txt", "Stress.txt", "PrincipalStrain.txt", "PrincipalStress.txt"};
+        for (int i = 0; i < 4; i++)
+        {
+            avgFieldAtNodes(i, filenames[i], true);
+        }
     }
 }

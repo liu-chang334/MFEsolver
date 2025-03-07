@@ -21,12 +21,7 @@ public:
     Eigen::SparseMatrix<double> K;
     Eigen::SparseVector<double> F;
     Eigen::SparseVector<double> U;
-    std::vector<Eigen::MatrixXd> tmp_matrix1;
-    std::vector<Eigen::MatrixXd> tmp_matrix2;
-    std::vector<Eigen::MatrixXd> tmp_matrix3;
-    std::vector<Eigen::MatrixXd> tmp_matrix4;
-    // std::vector<Eigen::MatrixXd> tmp_matrix5;
-    // std::vector<Eigen::MatrixXd> tmp_matrix6;
+    std::vector<std::vector<Eigen::MatrixXd>> tmp_matrices;
     std::vector<Eigen::VectorXd> Tensor;
 
 public:
@@ -40,6 +35,7 @@ public:
     Eigen::VectorXd getElementNodesDisplacement(const int elementID);
 
     Eigen::MatrixXd calcuElementStrain(const int elementID, bool extrapolatetoNodes = true);
+    
     std::pair<Eigen::MatrixXd, Eigen::MatrixXd> calcuElementStress(const int elementID, bool extrapolatetoNodes = true); 
     void calcuElementPrincipalStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
                                     Eigen::MatrixXd &principalStrain, Eigen::MatrixXd &principalStress, bool extrapolatetoNodes = true); 
@@ -47,10 +43,7 @@ public:
     void calcuAllElementStrain(bool extrapolatetoNodes = true);
     void calcuAllElementStress(bool extrapolatetoNodes = true, bool is_principal = false);  
 
-    void avgStrainAtNodes(bool is_write = true);
-    void avgStressAtNodes(bool is_write = true);
-    void avgPrincipalStrainAtNodes(bool is_write = true);
-    void avgPrincipalStressAtNodes(bool is_write = true);
+    void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& filename, bool is_write = true);
     
 };
 #endif

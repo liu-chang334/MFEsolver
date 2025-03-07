@@ -154,7 +154,7 @@ void FEDataModelPost::FEdataSetGridScalar(std::string fieldname)
         {
             scalar->InsertNextTuple3(Tensor(i, 0), Tensor(i, 1), Tensor(i, 2));
         }
-        ugrid->GetPointData()->SetVectors(scalar);
+        ugrid->GetPointData()->AddArray(scalar);
     }
     if (fieldname == "E")
     {
@@ -236,6 +236,15 @@ void FEDataModelPost::FEdataPlot()
     renderWindowInteractor->Start();
 }
 
+void FEDataModelPost::clear()
+{
+    Tensor = Eigen::MatrixXd::Zero(0, 0);
+
+    points->Reset();
+    ugrid->Reset();
+    scalar->Reset();
+}
+
 /**
  * @brief Plot the grid with scalar
  *
@@ -245,24 +254,27 @@ void FEDataModelPost::FEdataPlot()
  */
 void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
 {
+    clear();
     FEdataSetGridScalar(fieldname);
     vtkNew<vtkArrayCalculator> calculator;
     calculator->SetInputData(ugrid);
     calculator->SetAttributeTypeToPointData();
     if (fieldname == "U")
     {
-        calculator->AddVectorArrayName("Displacement");
+        calculator->AddScalarVariable("U1", "Displacement", 0);
+        calculator->AddScalarVariable("U2", "Displacement", 1);
+        calculator->AddScalarVariable("U3", "Displacement", 2);
         if (component == 1)
         {
-            calculator->SetFunction("Displacement[0]");
+            calculator->SetFunction("U1");
             calculator->SetResultArrayName("U1");
         }else if (component == 2)
         {
-            calculator->SetFunction("Displacement[1]");
-            calculator->SetResultArrayName("U2");
+            calculator->SetFunction("U2");
+            calculator->SetResultArrayName("U2"); 
         }else if (component == 3)
         {
-            calculator->SetFunction("Displacement[2]");
+            calculator->SetFunction("U3");
             calculator->SetResultArrayName("U3");
         }
     }
@@ -294,6 +306,10 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
         {
             calculator->SetFunction("E13");
             calculator->SetResultArrayName("E13"); 
+        }else if (component == 23)
+        {
+            calculator->SetFunction("E23");
+            calculator->SetResultArrayName("E23");
         }
     }
     if (fieldname == "E_princ")
@@ -419,3 +435,4 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
     renderWindowInteractor->Initialize();
     renderWindowInteractor->Start();
 }
+
