@@ -33,13 +33,13 @@ public:
           interval_ms_(intervalMs),
           start_time_(Clock::now())
     {
-        // 启动旋转线程
+       
         spinner_thread_ = std::thread([this]() {
             static const char spinner_chars[] = { '|', '/', '-', '\\' };
             int i = 0;
             while (running_)
             {
-                // "\r" 回到行首，然后打印提示+旋转符
+                
                 std::cout << "\r" 
                           << process_msg_ << spinner_chars[i++] 
                           << std::flush;
@@ -76,11 +76,11 @@ private:
     std::atomic<bool> running_;
     std::thread spinner_thread_;
 
-    std::string process_msg_;  // 显示在旋转符前面的提示, e.g. "[Process] ... "
-    std::string time_msg_;     // 停止时打印的耗时提示, e.g. "Matrix K(510, 510) assembly time: "
-    int interval_ms_;          // 刷新间隔(ms)
+    std::string process_msg_;  // Display message before the spinner, e.g. "Processing..."
+    std::string time_msg_;     // Time message to display after the spinner, e.g. "Total time: "
+    int interval_ms_;          // refresh interval
 
-    std::chrono::time_point<Clock> start_time_; // 记录构造时刻
+    std::chrono::time_point<Clock> start_time_; // Record the start time
 };
 
 #endif // SPINNER_H
