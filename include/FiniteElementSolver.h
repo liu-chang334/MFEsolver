@@ -2,6 +2,7 @@
 #define FINITE_ELEMENT_SOLVER_H
 
 #include "FiniteElementModel.h"
+#include "C3D8.h"
 #include <Eigen/Sparse>
 
 /**
@@ -18,6 +19,8 @@ class FiniteElementSolver
 {
 public:
     FiniteElementModel feModel;
+    std::vector<std::unique_ptr<C3D8>> elements;
+
     Eigen::SparseMatrix<double> K;
     Eigen::SparseVector<double> F;
     Eigen::SparseVector<double> U;

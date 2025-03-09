@@ -16,7 +16,39 @@
  *
  * @param[in] feModel Finite element model
  */
-FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(feModel){}
+FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(feModel){
+    const Eigen::MatrixXd& Node = feModel.Node;
+    const Eigen::MatrixXi& Element = feModel.Element;
+    const Eigen::MatrixXd& material = feModel.Material;
+    
+    int numNodes = static_cast<int>(Node.rows());
+    int numElements = static_cast<int>(Element.rows());
+
+    elements.reserve(numElements);
+
+    for (int i = 0; i < numElements; i++)
+    {
+        std::string elemType = "C3D8"; // FIXME: only C3D8 is supported for now
+        Eigen::VectorXi elemnode = Element.row(i);
+        Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3); 
+        for (int j = 0; j < 8; j++)
+        {
+            elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
+        }
+
+        auto elem = std::make_unique<C3D8>(i + 1);
+        elem->setNodes(elemnode, elemnodeCoor);
+        elem->initMaterialPoints();
+
+        double E = material(0, 0);
+        double nu = material(0, 1);
+        auto mat = std::make_unique<LinearElasticMaterial>(E, nu);
+
+        elem->setMaterial(std::move(mat));
+        elem->setMaterialByYoungPoisson(E, nu);
+        elements.push_back(std::move(elem));
+    }   
+}
 
 /**
  * @brief Assemble the Global Stiffness Matrix
@@ -26,13 +58,10 @@ FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(f
  */
 void FiniteElementSolver::assembleStiffnessMatrix()
 {
-    Eigen::MatrixXd Node = feModel.Node;
-    Eigen::MatrixXi Element = feModel.Element;
-    Eigen::MatrixXd Material = feModel.Material;
-
+    const Eigen::MatrixXd& Node = feModel.Node;
+    const Eigen::MatrixXi& Element = feModel.Element;
     int numNodes = static_cast<int>(Node.rows());
     int numElements = static_cast<int>(Element.rows());
-    int numMaterials = static_cast<int>(Material.rows());
 
     std::vector<Eigen::Triplet<double>> tripletList;
     tripletList.reserve(numElements * 24 * 24);
@@ -40,24 +69,14 @@ void FiniteElementSolver::assembleStiffnessMatrix()
     K = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
     for (int i = 0; i < numElements; i++)
     {
-        std::string elemType = "C3D8"; // FIXME: only C3D8 is supported for now
-        Eigen::VectorXi elemnode = Element.row(i);
-        Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3);
-        
-        for (int j = 0; j < 8; j++)
-        {
-            elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
-        }
-
-        C3D8 elem(i + 1);
-        elem.setNodes(elemnode, elemnodeCoor);
-        elem.setMaterialByYoungPoisson(Material(0, 0), Material(0, 1));
-        Eigen::MatrixXd elemK = elem.calcuStiffnessMatrix();
+        C3D8* elem = elements[i].get();
+        Eigen::MatrixXd elemK = elem->calcuStiffnessMatrix();
+        Eigen::VectorXi elemNodes = feModel.Element.row(i);
 
         Eigen::VectorXi elemnodedof(24);
         for (int j = 0; j < 8; j++)
         {
-            int nodeIndex = elemnode(j);
+            int nodeIndex = elemNodes(j);
             for (int k = 0; k < 3; k++)
             {
                 elemnodedof(j * 3 + k) = nodeIndex * 3 - 3 + k;
@@ -224,6 +243,7 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
     }
     C3D8 elem(elementID);
     elem.setNodes(elemnode, elemnodeCoor);
+    elem.initMaterialPoints();
     elemStrain = elem.calcuStrainTensor(elemU);
     if (!extrapolatetoNodes)
     {
@@ -256,6 +276,7 @@ std::pair<Eigen::MatrixXd, Eigen::MatrixXd> FiniteElementSolver::calcuElementStr
     C3D8 elem(elementID);
     elem.setMaterialByYoungPoisson(feModel.Material(0, 0), feModel.Material(0, 1));
     elem.setNodes(elemnode, elemnodeCoor);
+    elem.initMaterialPoints();
     // elemStress = elem.calcuStressTensor(elemU);
     auto[elemStrain, elemStress] = elem.calcuStrainStressTensor(elemU);
     if (!extrapolatetoNodes)
@@ -284,6 +305,7 @@ void FiniteElementSolver::calcuElementPrincipalStress(const int elementID, Eigen
     C3D8 elem(elementID);
     elem.setMaterialByYoungPoisson(feModel.Material(0, 0), feModel.Material(0, 1));
     elem.setNodes(elemnode, elemnodeCoor);
+    elem.initMaterialPoints();
     // elemStress = elem.calcuStressTensor(elemU);
     auto[elemStrain, elemStress] = elem.calcuStrainStressTensor(elemU);
     strain = elemStrain;

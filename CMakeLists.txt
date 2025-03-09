@@ -37,7 +37,7 @@ else()
 endif()
 
 # Add source files
-file(GLOB SRC_FILES src/*.cpp)
+file(GLOB SRC_FILES src/*.cpp material/*.cpp)
 # file(GLOB SRC_FILES vtksample/vtkPoints.cpp)
 # file(GLOB SRC_FILES vtksample/vtkUnstructuredGrid.cpp)
 # file(GLOB SRC_FILES vtksample/plotcase3.cpp)

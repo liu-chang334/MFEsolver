@@ -13,22 +13,7 @@
  *       (-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1),
  *       (-1, -1,  1), (1, -1,  1), (-1, 1,  1), (1, 1,  1)
  */
-C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3), gaussWeights(8,1), 
-                                                                extrapolateMatrix(8,8){
-    const double g = 1.0 / sqrt(3.0);
-    gaussPoints << -g, -g, -g,
-                    g, -g, -g,
-                    g,  g, -g,
-                   -g,  g, -g,
-                   -g, -g,  g,
-                    g, -g,  g,
-                    g,  g,  g,
-                   -g,  g,  g;
-                   
-
-    const double w = 1.0;
-    gaussWeights << w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w;
-
+C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), extrapolateMatrix(8,8){
     const double Tpp = (5.0 + 3.0 * sqrt(3.0)) / 4.0;
     const double Tpm = (5.0 - 3.0 * sqrt(3.0)) / 4.0;
     const double Qpm = (-1.0 + sqrt(3.0)) / 4.0;
@@ -42,6 +27,50 @@ C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), gaussPoints(8,3
         /* Row 5 */ Qpm, Qmm, Qpm, Tpm, Qmm, Tpp, Qmm, Qpm,
         /* Row 6 */ Tpm, Qpm, Qmm, Qpm, Qpm, Qmm, Tpp, Qmm,
         /* Row 7 */ Qpm, Tpm, Qpm, Qmm, Qmm, Qpm, Qmm, Tpp;
+}
+
+void C3D8::initMaterialPoints()
+{
+    const double g = 1.0 / sqrt(3.0);
+    Eigen::MatrixXd gaussPoints(8,3);
+    Eigen::VectorXd gaussWeights(8);
+    gaussPoints << -g, -g, -g,
+                    g, -g, -g,
+                    g,  g, -g,
+                   -g,  g, -g,
+                   -g, -g,  g,
+                    g, -g,  g,
+                    g,  g,  g,
+                   -g,  g,  g;
+    const double w = 1.0;
+    gaussWeights << w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w, w * w * w;
+
+    materialPoints.resize(8);
+    for (int i = 0; i < 8; ++i)
+    {
+        materialPoints[i].r = gaussPoints(i, 0);
+        materialPoints[i].s = gaussPoints(i, 1);
+        materialPoints[i].t = gaussPoints(i, 2);
+        materialPoints[i].weight = gaussWeights(i);
+    }
+
+    for (int i = 0; i < 8; ++i)
+    {
+        Eigen::MatrixXd Nrst_diff = calcuShapeFunctionDerivatives(materialPoints[i].r, materialPoints[i].s, materialPoints[i].t);
+        Eigen::MatrixXd J = calcuJacobian(Nrst_diff);
+        materialPoints[i].J_inv = calcuJacobianInverse(J);
+        materialPoints[i].detJ = J.determinant();
+        materialPoints[i].B = calcuBMatrix(Nrst_diff, materialPoints[i].J_inv);
+
+        materialPoints[i].strain = Eigen::VectorXd::Zero(6);
+        materialPoints[i].stress = Eigen::VectorXd::Zero(6);
+    }
+
+    calcuBMatrixVolumetricAverage();
+    for (int i = 0; i < 8; ++i)
+    {
+        materialPoints[i].Bbar = calcuBMatrixCorrected(materialPoints[i].B);
+    }
 }
 
 /**
@@ -145,12 +174,8 @@ Eigen::MatrixXd C3D8::calcuJacobianInverse(const Eigen::MatrixXd& J)
  * @note The order of the strains is defined as follows:
  *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
-Eigen::MatrixXd C3D8::calcuBMatrix(double r, double s, double t) 
+Eigen::MatrixXd C3D8::calcuBMatrix(const Eigen::MatrixXd& Nrst_diff, const Eigen::MatrixXd& J_inv) 
 {
-    Eigen::MatrixXd Nrst_diff = calcuShapeFunctionDerivatives(r, s, t);
-    Eigen::MatrixXd J = calcuJacobian(Nrst_diff);
-    Eigen::MatrixXd J_inv = calcuJacobianInverse(J);
-
     Eigen::MatrixXd B(6, 24);
     B.setZero();
 
@@ -193,9 +218,8 @@ Eigen::MatrixXd C3D8::calcuBMatrix(double r, double s, double t)
  * @note The order of the strains is defined as follows:
  *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
-Eigen::MatrixXd C3D8::calcuBMatrixVolumetric(double r, double s, double t)
+Eigen::MatrixXd C3D8::calcuBMatrixVolumetric(const Eigen::MatrixXd& B)
 {
-    Eigen::MatrixXd B = calcuBMatrix(r, s, t);
     Eigen::MatrixXd Bvol = Eigen::MatrixXd::Zero(6, 24);
     for (int i = 0; i < 8; ++i)
     {
@@ -228,20 +252,18 @@ void C3D8::calcuBMatrixVolumetricAverage()
     Eigen::MatrixXd B_vol_integrate = Eigen::MatrixXd::Zero(6, 24);
     for (int i = 0; i < 8; ++i)
     {
-        double s = gaussPoints(i, 0);
-        double t = gaussPoints(i, 1);
-        double r = gaussPoints(i, 2);
-
-        Eigen::MatrixXd J = calcuJacobian(calcuShapeFunctionDerivatives(r, s, t));
-        Eigen::MatrixXd Bvol = calcuBMatrixVolumetric(r, s, t);
-
-        double detJ = J.determinant();
-        B_vol_integrate += Bvol * detJ * gaussWeights(i);
+        double r = materialPoints[i].r;
+        double s = materialPoints[i].s;
+        double t = materialPoints[i].t;
+        Eigen::MatrixXd B = materialPoints[i].B;
+        double detJ = materialPoints[i].detJ;
+        
+        Eigen::MatrixXd Bvol = calcuBMatrixVolumetric(B);
+        B_vol_integrate += Bvol * detJ * materialPoints[i].weight;
     }
 
     double elemvol = calcuVolume();
     Eigen::MatrixXd B_vol_avg = B_vol_integrate / elemvol; 
-
     Bvol_average = B_vol_avg;   
 }
 
@@ -255,7 +277,7 @@ void C3D8::calcuBMatrixVolumetricAverage()
  * @note The order of the strains is defined as follows:
  *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
-Eigen::MatrixXd C3D8::calcuBMatrixCorrected(double r, double s, double t)
+Eigen::MatrixXd C3D8::calcuBMatrixCorrected(const Eigen::MatrixXd& B)
 {
     // Eigen::MatrixXd B_vol_integrate = Eigen::MatrixXd::Zero(6, 24);
 
@@ -275,8 +297,7 @@ Eigen::MatrixXd C3D8::calcuBMatrixCorrected(double r, double s, double t)
 
     // double elemvol = calcuVolume();
     // Eigen::MatrixXd B_vol_avg = B_vol_integrate / elemvol;
-    Eigen::MatrixXd B = calcuBMatrix(r, s, t);
-    Eigen::MatrixXd Bvol = calcuBMatrixVolumetric(r, s, t);
+    Eigen::MatrixXd Bvol = calcuBMatrixVolumetric(B);
     Eigen::MatrixXd Bbar = B - Bvol + Bvol_average;
 
     return Bbar;
@@ -292,10 +313,10 @@ Eigen::MatrixXd C3D8::calcuBMatrixCorrected(double r, double s, double t)
  * @note The order of the strains is defined as follows:
  *       0: e_11， 1: e_22， 2: e_33， 3: 2*e_12， 4: 2*e_13， 5: 2*e_23
  */
-Eigen::MatrixXd C3D8::calcuBMatrixDeviatoric(double r, double s, double t)
+Eigen::MatrixXd C3D8::calcuBMatrixDeviatoric(const Eigen::MatrixXd& Nrst_diff, const Eigen::MatrixXd& J_inv)
 {
-    Eigen::MatrixXd B = calcuBMatrix(r, s, t);
-    Eigen::MatrixXd Bvol = calcuBMatrixVolumetric(r, s, t);
+    Eigen::MatrixXd B = calcuBMatrix(Nrst_diff, J_inv);
+    Eigen::MatrixXd Bvol = calcuBMatrixVolumetric(B);
     Eigen::MatrixXd Bdev = B - Bvol;
 
     return Bdev;
@@ -309,16 +330,9 @@ Eigen::MatrixXd C3D8::calcuBMatrixDeviatoric(double r, double s, double t)
 double C3D8::calcuVolume()
 {
     double elemvol = 0.0;
-    for (int i = 0; i < gaussPoints.rows(); i++) {
-        double r = gaussPoints(i, 0);
-        double s = gaussPoints(i, 1);
-        double t = gaussPoints(i, 2);
-
-        Eigen::MatrixXd Nrst_diff = calcuShapeFunctionDerivatives(r, s, t);
-        Eigen::MatrixXd J = calcuJacobian(Nrst_diff);
-
-        double detJ = J.determinant();
-        elemvol += detJ * gaussWeights(i);
+    for (int i = 0; i < 8; i++) {
+        double detJ = materialPoints[i].detJ;
+        elemvol += detJ * materialPoints[i].weight;
     }
     return elemvol;
 }
@@ -368,17 +382,13 @@ Eigen::MatrixXd C3D8::calcuStiffnessMatrix()
     // double detJ = J.determinant();
     // Ke += Bvol.transpose() * D * Bvol * detJ * w;
     */
-    calcuBMatrixVolumetricAverage();
+    // calcuBMatrixVolumetricAverage();
     Eigen::MatrixXd Ke = Eigen::MatrixXd::Zero(24, 24);
     Eigen::MatrixXd D = calcuConstitutiveMatrix();
     for (int i = 0; i < 8; i++) {
-        double r = gaussPoints(i, 0);
-        double s = gaussPoints(i, 1);
-        double t = gaussPoints(i, 2);
-        Eigen::MatrixXd Bbar = calcuBMatrixCorrected(r, s, t);
-        Eigen::MatrixXd J = calcuJacobian(calcuShapeFunctionDerivatives(r, s, t));
-        double detJ = J.determinant();
-        Ke += Bbar.transpose() * D * Bbar * detJ * gaussWeights(i); 
+        Eigen::MatrixXd Bbar = materialPoints[i].Bbar;
+        double detJ = materialPoints[i].detJ;
+        Ke += Bbar.transpose() * D * Bbar * detJ * materialPoints[i].weight;
     }
 
     return Ke;
@@ -398,10 +408,7 @@ Eigen::MatrixXd C3D8::calcuStrainTensor(const Eigen::VectorXd& u)
     Eigen::MatrixXd strain = Eigen::MatrixXd::Zero(6, 8);
     for(int i = 0; i < 8; i++)
     {
-        double r = gaussPoints(i, 0);
-        double s = gaussPoints(i, 1);
-        double t = gaussPoints(i, 2);
-        Eigen::MatrixXd Bbar = calcuBMatrixCorrected(r, s, t);
+        Eigen::MatrixXd Bbar = materialPoints[i].Bbar;
         strain.col(i) = Bbar * u;
     }
     return strain;
