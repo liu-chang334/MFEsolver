@@ -23,7 +23,7 @@ public:
 
     Eigen::SparseMatrix<double> K;
     Eigen::SparseVector<double> F;
-    Eigen::SparseVector<double> U;
+    Eigen::VectorXd U;
     std::vector<std::vector<Eigen::MatrixXd>> tmp_matrices;
     std::vector<Eigen::VectorXd> Tensor;
 
@@ -35,7 +35,11 @@ public:
     void solve_U();
     void solve();
 
-    Eigen::VectorXd getElementNodesDisplacement(const int elementID);
+    void assembleTangentMatrixAndResidual(const Eigen::VectorXd &u, Eigen::SparseVector<double>& R);
+    void FiniteElementSolver::applyBoundaryConditions(Eigen::SparseVector<double> &R);
+    void solveNonlinear();
+
+    Eigen::VectorXd getElementNodesDisplacement(const int elementID, const Eigen::VectorXd &u);
 
     Eigen::MatrixXd calcuElementStrain(const int elementID, bool extrapolatetoNodes = true);
     

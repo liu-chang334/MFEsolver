@@ -57,7 +57,7 @@ public:
 
     void setMaterial(std::unique_ptr<Material> mat) {material_ = std::move(mat);};
     void initMaterialPoints();
-    void calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& R, Eigen::SparseMatrix<double>& K);
+    void calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK);
 
     Eigen::VectorXd calcuShapeFunctions(double r, double s, double t);
     Eigen::MatrixXd calcuShapeFunctionDerivatives(double r, double s, double t);

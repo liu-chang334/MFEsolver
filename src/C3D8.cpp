@@ -438,6 +438,33 @@ std::pair<Eigen::MatrixXd, Eigen::MatrixXd> C3D8::calcuStrainStressTensor(const 
     return std::make_pair(strain, stress); 
 }
 
+void C3D8::calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
+{
+    elemQ = Eigen::VectorXd::Zero(24);
+    elemK = Eigen::MatrixXd::Zero(24, 24);    
+
+    for (auto& mp : materialPoints)
+    {
+        Eigen::MatrixXd Bbar = mp.Bbar;
+        double detJ = mp.detJ;
+        Eigen::VectorXd strain = Bbar * u;
+
+        Eigen::VectorXd stress;
+        Eigen::MatrixXd tangent;
+        material_->updateStressAndTangent(strain, stress, tangent);
+
+        elemQ += Bbar.transpose() * stress * detJ * mp.weight;
+        elemK += Bbar.transpose() * tangent * Bbar * detJ * mp.weight;
+
+        // std::cout << "elemQ: " << elemQ.transpose() << std::endl;
+ 
+        // update material point
+        mp.strain = strain;
+        mp.stress = stress;
+    }
+}
+
+
 /**
  * @brief Interpolate a tensor from gauss points to nodes.
  *

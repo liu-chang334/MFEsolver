@@ -21,25 +21,26 @@ int main()
 
     // initialize the FEA solver and solve
     FiniteElementSolver feaSolver(feaModel);
-    feaSolver.solve();
+    // feaSolver.solve();
+    feaSolver.solveNonlinear();
     
     // post-process
     FEDataModelPost feaModelPost(feaModel);
-    // feaModelPost.FEdataPlotScalar("U", 1);
-    // feaModelPost.FEdataPlotScalar("U", 2);
-    // feaModelPost.FEdataPlotScalar("U", 3);
+    feaModelPost.FEdataPlotScalar("U", 1);
+    feaModelPost.FEdataPlotScalar("U", 2);
+    feaModelPost.FEdataPlotScalar("U", 3);
     // feaModelPost.FEdataPlotScalar("E", 11);
     // feaModelPost.FEdataPlotScalar("E", 22);
     // feaModelPost.FEdataPlotScalar("E", 33);
     // feaModelPost.FEdataPlotScalar("E", 12);
     // feaModelPost.FEdataPlotScalar("E", 13);
     // feaModelPost.FEdataPlotScalar("E", 23);
-    feaModelPost.FEdataPlotScalar("S", 11);
-    feaModelPost.FEdataPlotScalar("S", 22);
-    feaModelPost.FEdataPlotScalar("S", 33);
-    feaModelPost.FEdataPlotScalar("S", 12);
-    feaModelPost.FEdataPlotScalar("S", 13);
-    feaModelPost.FEdataPlotScalar("S", 23);
+    // feaModelPost.FEdataPlotScalar("S", 11);
+    // feaModelPost.FEdataPlotScalar("S", 22);
+    // feaModelPost.FEdataPlotScalar("S", 33);
+    // feaModelPost.FEdataPlotScalar("S", 12);
+    // feaModelPost.FEdataPlotScalar("S", 13);
+    // feaModelPost.FEdataPlotScalar("S", 23);
     // feaModelPost.FEdataPlotScalar("S_princ", 1);
     // feaModelPost.FEdataPlotScalar("S_princ", 2);
     // feaModelPost.FEdataPlotScalar("S_princ", 3);

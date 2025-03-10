@@ -144,6 +144,23 @@ void FiniteElementSolver::applyBoundaryConditions()
     }
 }
 
+void FiniteElementSolver::applyBoundaryConditions(Eigen::SparseVector<double>& R)
+{
+    long double big_num = 1e8;
+    Eigen::MatrixXd Constr = feModel.Constraint;
+    int numConstr = static_cast<int>(Constr.rows());
+    for (int i = 0; i < numConstr; i++)
+    {
+        int constrnode = static_cast<int>(Constr(i, 0));
+        int constrdirection = static_cast<int>(Constr(i, 1));
+        int constrglobalindex = 3 * constrnode - 4 + constrdirection;
+        double constrvalue = static_cast<double>(Constr(i, 2));
+
+        R.coeffRef(constrglobalindex) = constrvalue * K.coeff(constrglobalindex, constrglobalindex) * big_num;
+        K.coeffRef(constrglobalindex, constrglobalindex) = K.coeff(constrglobalindex, constrglobalindex) * big_num;
+    }
+}
+
 /**
  * @brief Assemble the Global Stiffness Matrix and the Global Force Vector,
  * and apply the boundary conditions, then solve the linear system
@@ -207,7 +224,7 @@ void FiniteElementSolver::solve_U()
  * @param[in] elementID Element ID
  * @return Eigen::VectorXd Displacement vector at nodes of specified element
  */
-Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int elementID)
+Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int elementID, const Eigen::VectorXd &u)
 {
     Eigen::VectorXi elementnodeID;
     feModel.getNodesIDofElement(elementID, elementnodeID);
@@ -217,7 +234,7 @@ Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int eleme
         int nodeIndex = elementnodeID(i);
         for (int j = 0; j < 3; j++)
         {
-            elemU(i * 3 + j) = U.coeff(3 * nodeIndex - 3 + j);
+            elemU(i * 3 + j) = u(3 * nodeIndex - 3 + j);
         } 
     }
     return elemU;
@@ -232,7 +249,7 @@ Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int eleme
  */
 Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, bool extrapolatetoNodes)
 {
-    Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
+    Eigen::VectorXd elemU = getElementNodesDisplacement(elementID, U);
     Eigen::MatrixXd elemStrain = Eigen::MatrixXd::Zero(6, 8);
     // get the element nodes coordinates matrix
     Eigen::VectorXi elemnode = feModel.Element.row(elementID - 1);
@@ -265,7 +282,7 @@ Eigen::MatrixXd FiniteElementSolver::calcuElementStrain(const int elementID, boo
  */
 std::pair<Eigen::MatrixXd, Eigen::MatrixXd> FiniteElementSolver::calcuElementStress(const int elementID, bool extrapolatetoNodes)
 {
-    Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
+    Eigen::VectorXd elemU = getElementNodesDisplacement(elementID, U);
     // get the element nodes coordinates matrix
     Eigen::VectorXi elemnode = feModel.Element.row(elementID - 1);
     Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3);
@@ -294,7 +311,7 @@ std::pair<Eigen::MatrixXd, Eigen::MatrixXd> FiniteElementSolver::calcuElementStr
 void FiniteElementSolver::calcuElementPrincipalStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
                                     Eigen::MatrixXd &principalStrain, Eigen::MatrixXd &principalStress, bool extrapolatetoNodes)
 {
-    Eigen::VectorXd elemU = getElementNodesDisplacement(elementID);
+    Eigen::VectorXd elemU = getElementNodesDisplacement(elementID, U);
     // get the element nodes coordinates matrix
     Eigen::VectorXi elemnode = feModel.Element.row(elementID - 1);
     Eigen::MatrixXd elemnodeCoor = Eigen::MatrixXd::Zero(8, 3);
@@ -443,4 +460,93 @@ void FiniteElementSolver::solve()
             avgFieldAtNodes(i, filenames[i], true);
         }
     }
+}
+
+void FiniteElementSolver::assembleTangentMatrixAndResidual(const Eigen::VectorXd& u, Eigen::SparseVector<double>& R)
+{
+    const Eigen::MatrixXd& Node = feModel.Node;
+    const Eigen::MatrixXi& Element = feModel.Element;
+    int numNodes = static_cast<int>(Node.rows());
+    int numElements = static_cast<int>(Element.rows());
+
+    std::vector<Eigen::Triplet<double>> tripletList; 
+    tripletList.reserve(numElements * 24 * 24);
+
+    K = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
+    Eigen::SparseVector<double> Q = Eigen::SparseVector<double>(numNodes * 3, 1);
+
+    for (int i = 0; i < numElements; i++)
+    {
+        C3D8* elem = elements[i].get();
+        Eigen::VectorXd elemQ;
+        Eigen::MatrixXd elemK;
+        Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1, u);
+        // std::cout << "elemU: " << elemU.transpose() << std::endl;
+        elem->calcuTangentAndResidual(elemU, elemQ, elemK);
+        // std::cout << "elemQ: " << elemQ.transpose() << std::endl;
+
+        Eigen::VectorXi elemNodes = feModel.Element.row(i);
+        Eigen::VectorXi elemnodedof(24);
+
+        for (int j = 0; j < 8; j++)
+        {
+            int nodeIndex = elemNodes(j);
+            for (int k = 0; k < 3; k++)
+            {
+                elemnodedof(j * 3 + k) = nodeIndex * 3 - 3 + k;
+            }
+        }
+
+        for (int j = 0; j < 24; j++)
+        {
+            int globalRow = elemnodedof(j);
+            Q.coeffRef(globalRow) += elemQ(j);
+            for (int k = 0; k < 24; k++)
+            {
+                int globalCol = elemnodedof(k);
+                tripletList.emplace_back(globalRow, globalCol, elemK(j, k));
+            }
+        }
+    }
+    K.setFromTriplets(tripletList.begin(), tripletList.end());
+    R = F - Q;
+}
+void FiniteElementSolver::solveNonlinear()
+{
+    const int maxIter = 20;
+    const double tol = 1e-6;
+    Eigen::VectorXd u = Eigen::VectorXd::Zero(feModel.Node.rows() * 3); 
+    Eigen::VectorXd du;
+    Eigen::SparseVector<double> R;
+    assembleForceVector();
+    // std::cout << "Initial Force: " << F.transpose() << std::endl;
+
+    for (int iter = 0; iter < maxIter; iter++)
+    {
+        std::cout << "Iteration: " << iter + 1 << std::endl;
+        assembleTangentMatrixAndResidual(u, R);
+
+        applyBoundaryConditions(R);
+        // std::cout << "Now Residual: " << R.transpose() << std::endl;
+        double normR = R.norm();
+        std::cout << "Norm of residual: " << normR << std::endl;
+        if (normR < tol)
+        {
+            std::cout << "Converged! Norm of residual: " << normR << std::endl;
+            break;
+        }
+
+        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+        solver.compute(K);
+        du = solver.solve(R);
+        u += du;
+    }
+    U = u;
+    std::string current_path = std::filesystem::current_path().string();
+    std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
+    if (std::filesystem::exists(resultpath)){
+        std::filesystem::remove_all(resultpath);
+    }
+    std::filesystem::create_directory(resultpath);  
+    saveMatrix2TXT(U, resultpath, "Displacement.txt", 12);
 }
