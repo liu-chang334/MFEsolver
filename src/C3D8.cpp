@@ -451,7 +451,7 @@ void C3D8::calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& el
 
         Eigen::VectorXd stress;
         Eigen::MatrixXd tangent;
-        material_->updateStressAndTangent(strain, stress, tangent);
+        material_.updateStressAndTangent(strain, stress, tangent);
 
         elemQ += Bbar.transpose() * stress * detJ * mp.weight;
         elemK += Bbar.transpose() * tangent * Bbar * detJ * mp.weight;

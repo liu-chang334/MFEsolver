@@ -50,12 +50,12 @@ public:
 
     std::vector<MaterialPoint> materialPoints;
 
-    std::unique_ptr<Material> material_;
+    LinearElasticMaterial material_;
 
 public:
     C3D8(int elemID, int matID = -1);
 
-    void setMaterial(std::unique_ptr<Material> mat) {material_ = std::move(mat);};
+    void setMaterial(const LinearElasticMaterial &material) { material_ = material; };
     void initMaterialPoints();
     void calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK);
 

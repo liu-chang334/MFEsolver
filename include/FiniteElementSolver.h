@@ -19,37 +19,31 @@ class FiniteElementSolver
 {
 public:
     FiniteElementModel feModel;
-    std::vector<std::unique_ptr<C3D8>> elements;
 
     Eigen::SparseMatrix<double> K;
-    Eigen::SparseVector<double> F;
+    Eigen::SparseVector<double> R;
     Eigen::VectorXd U;
+
+    std::vector<C3D8> elements;
     std::vector<std::vector<Eigen::MatrixXd>> tmp_matrices;
-    std::vector<Eigen::VectorXd> Tensor;
+    std::vector<Eigen::VectorXd> tensor_to_save;
 
 public:
     FiniteElementSolver(FiniteElementModel feModel);
-    void assembleStiffnessMatrix();
-    void assembleForceVector();
-    void applyBoundaryConditions();
-    void solve_U();
-    void solve();
 
-    void assembleTangentMatrixAndResidual(const Eigen::VectorXd &u, Eigen::SparseVector<double>& R);
-    void FiniteElementSolver::applyBoundaryConditions(Eigen::SparseVector<double> &R);
+    void initializeStiffnessMatrix();
+    void initializeResidual();
+    void applyBoundaryConditions();
+    void updateTangentMatrixAndResidual();
+    void solve();
     void solveNonlinear();
 
-    Eigen::VectorXd getElementNodesDisplacement(const int elementID, const Eigen::VectorXd &u);
-
-    Eigen::MatrixXd calcuElementStrain(const int elementID, bool extrapolatetoNodes = true);
-    
-    std::pair<Eigen::MatrixXd, Eigen::MatrixXd> calcuElementStress(const int elementID, bool extrapolatetoNodes = true); 
-    void calcuElementPrincipalStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
-                                    Eigen::MatrixXd &principalStrain, Eigen::MatrixXd &principalStress, bool extrapolatetoNodes = true); 
-
-    void calcuAllElementStrain(bool extrapolatetoNodes = true);
-    void calcuAllElementStress(bool extrapolatetoNodes = true, bool is_principal = false);  
-
+    Eigen::VectorXd getElementNodesDisplacement(const int elementID);
+    void calcuSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, bool extrapolatetoNodes = true); 
+    void calcuSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
+                                    Eigen::MatrixXd &principalStrain, Eigen::MatrixXd &principalStress, 
+                                    bool extrapolatetoNodes = true); 
+    void getAllElementStress(bool is_principal = true);  
     void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& filename, bool is_write = true);
     
 };
