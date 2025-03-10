@@ -3,8 +3,8 @@
 LinearElasticMaterial::LinearElasticMaterial(){}
 void LinearElasticMaterial::setproperties(double E, double nu)
 {
-	E_ = 20000;
-	nu_ = 0.2;
+	E_ = E;
+	nu_ = nu;
     // Calculate the Lame parameters
     double lambda_ = E_ * nu_ / ((1.0 + nu_) * (1.0 - 2.0 * nu_));
     double mu_ = E_ / (2.0 * (1.0 + nu_));
