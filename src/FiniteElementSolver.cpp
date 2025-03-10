@@ -16,7 +16,7 @@
  *
  * @param[in] feModel Finite element model
  */
-FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(feModel){
+FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : feModel(feModel){
     const Eigen::MatrixXd& Node = feModel.Node;
     const Eigen::MatrixXi& Element = feModel.Element;
     const Eigen::MatrixXd& material = feModel.Material;
@@ -27,6 +27,10 @@ FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(f
     K = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
     R = Eigen::SparseVector<double>(numNodes * 3, 1);
     U = Eigen::VectorXd::Zero(numNodes * 3);
+
+    double E = material(0, 0);
+    double nu = material(0, 1);
+    mat.setproperties(E, nu);
 
     initializeResidual();
     
@@ -42,15 +46,11 @@ FiniteElementSolver::FiniteElementSolver(FiniteElementModel feModel) : feModel(f
             elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
         }
 
-        C3D8 elem(i + 1);
+        C3D8 elem(i + 1, &mat);
         elem.setNodes(elemnode, elemnodeCoor);
         elem.initMaterialPoints();
 
-        double E = material(0, 0);
-        double nu = material(0, 1);
-        LinearElasticMaterial mat;
-        mat.setproperties(E, nu);
-        elem.setMaterial(mat);
+        // elem.setMaterial(mat);
         // elem->setMaterialByYoungPoisson(E, nu);
         elements.push_back(elem);
     }   

@@ -278,7 +278,8 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
  * @param[in,out] nodeIDs Return the nodes ID of the element.
  * @note
 */
-void FiniteElementModel::getNodesIDofElement(int elementID, Eigen::VectorXi& nodeIDs) {
+void FiniteElementModel::getNodesIDofElement(int elementID, Eigen::VectorXi& nodeIDs) const
+{
     if (elementID <= 0 || elementID > Element.rows()) {
         std::cerr << "Error: elementID is out of range!" << std::endl;
         std::exit(EXIT_FAILURE);

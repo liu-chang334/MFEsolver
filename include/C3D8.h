@@ -50,12 +50,12 @@ public:
 
     std::vector<MaterialPoint> materialPoints;
 
-    LinearElasticMaterial material_;
+    LinearElasticMaterial* material_;
 
 public:
-    C3D8(int elemID, int matID = -1);
+    C3D8(int elemID, LinearElasticMaterial* material, int matID = -1);
 
-    void setMaterial(const LinearElasticMaterial &material) { material_ = material; };
+    // void setMaterial(LinearElasticMaterial* material) { material_ = material; };
     void initMaterialPoints();
     void calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK);
 

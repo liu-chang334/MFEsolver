@@ -18,7 +18,8 @@
 class FiniteElementSolver
 {
 public:
-    FiniteElementModel feModel;
+    const FiniteElementModel& feModel;
+    LinearElasticMaterial mat;
 
     Eigen::SparseMatrix<double> K;
     Eigen::SparseVector<double> R;
@@ -29,7 +30,7 @@ public:
     std::vector<Eigen::VectorXd> tensor_to_save;
 
 public:
-    FiniteElementSolver(FiniteElementModel feModel);
+    FiniteElementSolver(const FiniteElementModel& feModel);
 
     void initializeStiffnessMatrix();
     void initializeResidual();

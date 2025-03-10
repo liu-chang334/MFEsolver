@@ -1,6 +1,5 @@
 #include "../include/C3D8.h"
 
-
 /**
  * @brief Constructor for the C3D8 class.
  *
@@ -13,7 +12,9 @@
  *       (-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1),
  *       (-1, -1,  1), (1, -1,  1), (-1, 1,  1), (1, 1,  1)
  */
-C3D8::C3D8(int elemID, int matID) : SolidElement(elemID, matID), extrapolateMatrix(8,8){
+C3D8::C3D8(int elemID, LinearElasticMaterial* material, int matID) : SolidElement(elemID, matID), 
+                        material_(material), extrapolateMatrix(8,8)
+{
     const double Tpp = (5.0 + 3.0 * sqrt(3.0)) / 4.0;
     const double Tpm = (5.0 - 3.0 * sqrt(3.0)) / 4.0;
     const double Qpm = (-1.0 + sqrt(3.0)) / 4.0;
@@ -338,8 +339,6 @@ double C3D8::calcuVolume()
 }
 
 
-
-
 void C3D8::calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
 {
     elemQ = Eigen::VectorXd::Zero(24);
@@ -351,9 +350,9 @@ void C3D8::calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& el
         double detJ = mp.detJ;
         Eigen::VectorXd strain = Bbar * u;
 
-        Eigen::VectorXd stress;
-        Eigen::MatrixXd tangent;
-        material_.updateStressAndTangent(strain, stress, tangent);
+        Eigen::VectorXd stress(6);
+        Eigen::MatrixXd tangent(6, 6);
+        material_->updateStressAndTangent(strain, stress, tangent);
 
         elemQ += Bbar.transpose() * stress * detJ * mp.weight;
         elemK += Bbar.transpose() * tangent * Bbar * detJ * mp.weight;

@@ -72,7 +72,7 @@ public:
     void addNset(const std::string& nsetName, const std::vector<int>& nodeIDs);
     void addElset(const std::string& esetName, const std::vector<int>& elementIDs);
     void printModelInfo();
-    void getNodesIDofElement(int elementID, Eigen::VectorXi &nodeIDs);
+    void getNodesIDofElement(int elementID, Eigen::VectorXi &nodeIDs) const;
 };
 
 
