@@ -50,14 +50,15 @@ public:
 
     std::vector<MaterialPoint> materialPoints;
 
-    LinearElasticMaterial* material_;
+    std::shared_ptr<Material> material_;
 
 public:
-    C3D8(int elemID, LinearElasticMaterial* material, int matID = -1);
+    C3D8(int elemID, std::shared_ptr<Material> material, int matID = -1);
 
     // void setMaterial(LinearElasticMaterial* material) { material_ = material; };
     void initMaterialPoints();
-    void calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK);
+    void updateTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK);
+    void updateMaterialPoint(MaterialPoint& mp, const Eigen::VectorXd& strain, const Eigen::VectorXd& stress);
 
     Eigen::VectorXd calcuShapeFunctions(double r, double s, double t);
     Eigen::MatrixXd calcuShapeFunctionDerivatives(double r, double s, double t);

@@ -284,6 +284,6 @@ void FiniteElementModel::getNodesIDofElement(int elementID, Eigen::VectorXi& nod
         std::cerr << "Error: elementID is out of range!" << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    Eigen::VectorXi elemnode = Element.row(elementID-1);
+    const Eigen::VectorXi& elemnode = Element.row(elementID-1);
     nodeIDs = elemnode;
 }

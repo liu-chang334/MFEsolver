@@ -12,7 +12,7 @@
  *       (-1, -1, -1), (1, -1, -1), (-1, 1, -1), (1, 1, -1),
  *       (-1, -1,  1), (1, -1,  1), (-1, 1,  1), (1, 1,  1)
  */
-C3D8::C3D8(int elemID, LinearElasticMaterial* material, int matID) : SolidElement(elemID, matID), 
+C3D8::C3D8(int elemID, std::shared_ptr<Material> material, int matID) : SolidElement(elemID, matID), 
                         material_(material), extrapolateMatrix(8,8)
 {
     const double Tpp = (5.0 + 3.0 * sqrt(3.0)) / 4.0;
@@ -339,7 +339,7 @@ double C3D8::calcuVolume()
 }
 
 
-void C3D8::calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
+void C3D8::updateTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
 {
     elemQ = Eigen::VectorXd::Zero(24);
     elemK = Eigen::MatrixXd::Zero(24, 24);    
@@ -360,8 +360,7 @@ void C3D8::calcuTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& el
         // std::cout << "elemQ: " << elemQ.transpose() << std::endl;
  
         // update material point
-        mp.strain = strain;
-        mp.stress = stress;
+        updateMaterialPoint(mp, strain, stress);
     }
 }
 
@@ -379,4 +378,9 @@ Eigen::MatrixXd C3D8::extrapolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints
     return tensor_at_nodes;
 }
 
+void C3D8::updateMaterialPoint(MaterialPoint& mp, const Eigen::VectorXd& strain, const Eigen::VectorXd& stress)
+{
+    mp.strain = strain;
+    mp.stress = stress;
+}
 // Class C3D8 End

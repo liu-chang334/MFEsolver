@@ -1,16 +1,15 @@
 #ifndef LINEAR_ELASTIC_MATERIAL_H
 #define LINEAR_ELASTIC_MATERIAL_H
 
-#include <Eigen/Dense>
-#include <vector>
+#include "Material.h"
 
-class LinearElasticMaterial
+class LinearElasticMaterial : public Material
 {
 public:
-    LinearElasticMaterial();
-    void setproperties(double E, double nu);
-
-    void updateStressAndTangent(const Eigen::VectorXd &strain, Eigen::VectorXd &stress, Eigen::MatrixXd &tangent);
+    LinearElasticMaterial() = default;
+    virtual void setMaterialParameters(const std::unordered_map<std::string, double>& parameters) override;
+    virtual void updateStressAndTangent(const Eigen::VectorXd &strain, 
+                                        Eigen::VectorXd &stress, Eigen::MatrixXd &tangent) override;
 
 public:
     double E_;

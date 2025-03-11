@@ -19,7 +19,7 @@ class FiniteElementSolver
 {
 public:
     const FiniteElementModel& feModel;
-    LinearElasticMaterial mat;
+    std::shared_ptr<Material> material;
 
     Eigen::SparseMatrix<double> K;
     Eigen::SparseVector<double> R;
@@ -32,20 +32,24 @@ public:
 public:
     FiniteElementSolver(const FiniteElementModel& feModel);
 
+    void initializematerial();
     void initializeStiffnessMatrix();
     void initializeResidual();
     void applyBoundaryConditions();
     void updateTangentMatrixAndResidual();
-    void solve();
-    void solveNonlinear();
+    void solve_linearelastic();
+    void solve_nonlinear();
+    bool performNewtonIteration(int maxIter, double tol, double scaleFactor);
 
     Eigen::VectorXd getElementNodesDisplacement(const int elementID);
-    void calcuSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, bool extrapolatetoNodes = true); 
-    void calcuSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
+    void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, bool extrapolatetoNodes = true); 
+    void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
                                     Eigen::MatrixXd &principalStrain, Eigen::MatrixXd &principalStress, 
                                     bool extrapolatetoNodes = true); 
     void getAllElementStress(bool is_principal = true);  
     void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& filename, bool is_write = true);
+
+    void FiniteElementSolver::writeToFile();
     
 };
 #endif

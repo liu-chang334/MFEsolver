@@ -19,7 +19,7 @@
 FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : feModel(feModel){
     const Eigen::MatrixXd& Node = feModel.Node;
     const Eigen::MatrixXi& Element = feModel.Element;
-    const Eigen::MatrixXd& material = feModel.Material;
+    const Eigen::MatrixXd& materialData = feModel.Material;
     
     int numNodes = static_cast<int>(Node.rows());
     int numElements = static_cast<int>(Element.rows());
@@ -28,9 +28,11 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     R = Eigen::SparseVector<double>(numNodes * 3, 1);
     U = Eigen::VectorXd::Zero(numNodes * 3);
 
-    double E = material(0, 0);
-    double nu = material(0, 1);
-    mat.setproperties(E, nu);
+    initializematerial();
+    std::unordered_map<std::string, double> matParams = {
+        {"E", materialData(0, 0)},
+        {"nu", materialData(0, 1)}};
+    material->setMaterialParameters(matParams);
 
     initializeResidual();
     
@@ -46,7 +48,7 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
             elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
         }
 
-        C3D8 elem(i + 1, &mat);
+        C3D8 elem(i + 1, material);
         elem.setNodes(elemnode, elemnodeCoor);
         elem.initMaterialPoints();
 
@@ -57,10 +59,30 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
 }
 
 /**
+ * @brief Initialize the material
+ * @note This function is called automatically when one FiniteElementSolver object is created
+ */
+
+void FiniteElementSolver::initializematerial()
+{
+    const std::string& matType = feModel.MaterialType;
+
+    if (matType == "LinearElastic")
+    {
+        material = std::make_shared<LinearElasticMaterial>();
+    }
+    else
+    {
+        std::cerr << "Error: Material type not supported" << std::endl;
+        exit(1);
+    }
+}
+
+/**
  * @brief Assemble the Global Stiffness Matrix
  * @note The element supported is only C3D8 for now, and the Global Stiffness Matrix 
  *      is not dealed with constraint yet
- * @note Now it takes a long time to assemble the Global Stiffness Matrix, need to be optimized
+ * @note This function is only called when solving for linear elastic problem
  */
 void FiniteElementSolver::initializeStiffnessMatrix()
 {
@@ -78,10 +100,9 @@ void FiniteElementSolver::initializeStiffnessMatrix()
         Eigen::VectorXd elemQ;
         Eigen::MatrixXd elemK;
         Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
-        // std::cout << "elemU: " << elemU.transpose() << std::endl;
-        elem.calcuTangentAndResidual(elemU, elemQ, elemK);
+        elem.updateTangentAndResidual(elemU, elemQ, elemK);
 
-        Eigen::VectorXi elemNodes = feModel.Element.row(i);
+        const Eigen::VectorXi& elemNodes = feModel.Element.row(i);
         Eigen::VectorXi elemnodedof(24);
         for (int j = 0; j < 8; j++)
         {
@@ -98,7 +119,6 @@ void FiniteElementSolver::initializeStiffnessMatrix()
             {
                 int globalRow = elemnodedof(j);
                 int globalCol = elemnodedof(k);
-                // K.coeffRef(globalRow, globalCol) += elemK(j, k);
                 tripletList.emplace_back(globalRow, globalCol, elemK(j, k));
             }
         }
@@ -107,13 +127,13 @@ void FiniteElementSolver::initializeStiffnessMatrix()
 }
 
 /**
- * @brief Assemble the Global Force Vector
- * @note The force is not dealed with constraint yet
+ * @brief Assemble the Residual Vector
+ * @note This function is called automatically when one FiniteElementSolver object is created
  */
 void FiniteElementSolver::initializeResidual()
 {
-    Eigen::MatrixXd Force = feModel.Force;
-    Eigen::MatrixXd Node = feModel.Node;
+    const Eigen::MatrixXd& Force = feModel.Force;
+    const Eigen::MatrixXd& Node = feModel.Node;
     int numNodes = static_cast<int>(Node.rows());
     int numForce = static_cast<int>(Force.rows());
 
@@ -136,7 +156,7 @@ void FiniteElementSolver::initializeResidual()
 void FiniteElementSolver::applyBoundaryConditions()
 {
     long double big_num = 1e8;
-    Eigen::MatrixXd Constr = feModel.Constraint;
+    const Eigen::MatrixXd& Constr = feModel.Constraint;
     int numConstr = static_cast<int>(Constr.rows());
     for (int i = 0; i < numConstr; i++)
     {
@@ -172,7 +192,7 @@ Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int eleme
     return elemU;
 }
 
-void FiniteElementSolver::calcuSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, bool extrapolatetoNodes)
+void FiniteElementSolver::getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, bool extrapolatetoNodes)
 {
     C3D8& elem = elements[elementID - 1];
     strain = Eigen::MatrixXd::Zero(6, 8);
@@ -189,7 +209,7 @@ void FiniteElementSolver::calcuSpecifiedElementStress(const int elementID, Eigen
     }
 }
 
-void FiniteElementSolver::calcuSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
+void FiniteElementSolver::getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
                                     Eigen::MatrixXd &principalStrain, Eigen::MatrixXd &principalStress, bool extrapolatetoNodes)
 {
     C3D8& elem = elements[elementID - 1];
@@ -230,35 +250,20 @@ void FiniteElementSolver::getAllElementStress(bool is_principal)
         Eigen::MatrixXd principalStrain(6, 8);
         Eigen::MatrixXd principalStress(6, 8);
 
-        if (elem.materialPoints.size() != 8)
-        {
-            std::cerr << "Error: material points size is not 8!" << std::endl;
-        }
         for (int j = 0; j < 8; j++)
         {
             if (elem.materialPoints[j].strain.size() !=6){
                 std::cerr << "Error: material points strain size is not 6!" << std::endl; 
             }
             auto mp = elem.materialPoints[j];
-            // std::cout << "mp.strain: " << mp.strain.transpose() << std::endl;
             matPointsStrain.col(j) = mp.strain;
             matPointsStress.col(j) = mp.stress;
         }
-
-        // std::string folder = "F:\\MFEsolver\\FEoutput";
-        // saveMatrix2TXT(matPointsStrain, folder, "strain_at_Gp.txt", 10);
-        // saveMatrix2TXT(matPointsStress, folder, "stress_at_Gp.txt", 10);
 
         tmp_strain.push_back(elem.extrapolateTensor(matPointsStrain));
         tmp_stress.push_back(elem.extrapolateTensor(matPointsStress));
         
             // Method-1: calculate principal strain and stress at gauss points and then extrapolate to nodes
-            // Eigen::MatrixXd elemStrain, elemStress, principalStrain, principalStress;
-            // calcuElementPrincipalStress(i + 1, elemStrain, elemStress, principalStrain, principalStress, extrapolatetoNodes);
-            // tmp_matrix1.push_back(elemStrain);
-            // tmp_matrix2.push_back(elemStress);
-            // tmp_matrix3.push_back(principalStrain);
-            // tmp_matrix4.push_back(principalStress);
 
             // Method-2: extrapolate strain and stress to nodes first, then calculate principal strain and stress at nodes
         if (is_principal){
@@ -326,80 +331,6 @@ void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& f
     }
 }
 
-void FiniteElementSolver::solve()
-{
-    {
-        Spinner spinner(
-            "\033[1;32m[Process]\033[0m Assembling Global Stiffness Matrix K: ", 
-            "Global Stiffness Matrix K assembly time: ",
-            100);
-        initializeStiffnessMatrix();
-    }
-    std::cout << "\033[1;32m[Info]\033[0m "
-            << "Global Stiffness Matrix K is "
-            << "\033[1;32m" << "[" << K.rows() << ", " << K.cols() << "]\033[0m\n";
-    // {
-    //     Spinner spinner(
-    //         "\033[1;32m[Process]\033[0m Assembling Global Force Vector F: ",
-    //         "Global Force Vector F assembly time: ",
-    //         1);    
-    //     initializeResidual();
-    // }
-    std::cout << "\033[1;32m[Info]\033[0m "
-            << "Global Force Vector F is "
-            << "\033[1;32m" << "[" << R.rows() << ", " << R.cols() << "]\033[0m\n";
-    {
-        Spinner spinner(
-            "\033[1;32m[Process]\033[0m Applying boundary conditions: ",
-            "Boundary conditions application time: ",
-            1 );
-        applyBoundaryConditions();
-    }
-    std::cout << "\033[1;32m[Info]\033[0m "
-            << "The method dealing with BC is \033[1;33m" << "multiply a large number\033[0m\n";
-    {
-        Spinner spinner(
-            "\033[1;32m[Process]\033[0m Solving the system: ",
-            "System solution time: ",
-            100); 
-        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
-        solver.compute(K);
-        U = solver.solve(R);
-    }
-    std::cout << "\033[1;32m[Info]\033[0m "
-            << "The method solving the system is \033[1;33m" << "LU decomposition\033[0m\n";
-
-    std::string current_path = std::filesystem::current_path().string();
-    std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
-    if (std::filesystem::exists(resultpath)){
-        std::filesystem::remove_all(resultpath);
-    }
-    std::filesystem::create_directory(resultpath);  
-    saveMatrix2TXT(U, resultpath, "Displacement.txt", 8);
-
-    {
-        Spinner spinner(
-            "\033[1;32m[Process]\033[0m Calculating strain and stress: ",
-            "Strain and stress calculation time: ", 100);
-        
-        int numElements = static_cast<int>(feModel.Element.rows());
-        for (int i = 0; i < numElements; i++)
-        {
-            C3D8& elem = elements[i];
-            Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
-            Eigen::VectorXd elemQ;
-            Eigen::MatrixXd elemK;
-            elem.calcuTangentAndResidual(elemU, elemQ, elemK);
-        }
-
-        getAllElementStress(true);
-        std::vector<std::string> filenames = {"Strain.txt", "Stress.txt", "PrincipalStrain.txt", "PrincipalStress.txt"};
-        for (int i = 0; i < 4; i++)
-        {
-            avgFieldAtNodes(i, filenames[i], true);
-        }
-    }
-}
 
 void FiniteElementSolver::updateTangentMatrixAndResidual()
 {
@@ -418,9 +349,9 @@ void FiniteElementSolver::updateTangentMatrixAndResidual()
         Eigen::VectorXd elemQ;
         Eigen::MatrixXd elemK;
         Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
-        elem.calcuTangentAndResidual(elemU, elemQ, elemK);
+        elem.updateTangentAndResidual(elemU, elemQ, elemK);
 
-        Eigen::VectorXi elemNodes = feModel.Element.row(i);
+        const Eigen::VectorXi& elemNodes = feModel.Element.row(i);
         Eigen::VectorXi elemnodedof(24);
 
         for (int j = 0; j < 8; j++)
@@ -446,33 +377,83 @@ void FiniteElementSolver::updateTangentMatrixAndResidual()
     K.setFromTriplets(tripletList.begin(), tripletList.end());
     R -= Q;
 }
-void FiniteElementSolver::solveNonlinear()
-{
-    const int maxIter = 20;
-    const double tol = 1e-6;
 
+
+
+void FiniteElementSolver::solve_linearelastic()
+{
+    {
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Assembling Global Stiffness Matrix K: ", 
+            "Global Stiffness Matrix K assembly time: ",
+            100);
+        initializeStiffnessMatrix();
+    }
+    std::cout << "\033[1;32m[Info]\033[0m "
+            << "Global Stiffness Matrix K is "
+            << "\033[1;32m" << "[" << K.rows() << ", " << K.cols() << "]\033[0m\n";
+
+    {
+        // Spinner spinner(
+        //     "\033[1;32m[Process]\033[0m Applying boundary conditions: ",
+        //     "Boundary conditions application time: ",
+        //     1 );
+        applyBoundaryConditions();
+    }
+
+    {
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Solving the system: ",
+            "System solution time: ",
+            100); 
+        Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
+        solver.compute(K);
+        U = solver.solve(R);
+    }
+
+    {  
+        int numElements = static_cast<int>(feModel.Element.rows());
+        for (int i = 0; i < numElements; i++)
+        {
+            C3D8& elem = elements[i];
+            Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
+            Eigen::VectorXd elemQ;
+            Eigen::MatrixXd elemK;
+            elem.updateTangentAndResidual(elemU, elemQ, elemK);
+        }
+    }
+    writeToFile();
+}
+
+bool FiniteElementSolver::performNewtonIteration(int maxIter, double tol, double scaleFactor)
+{
     for (int iter = 0; iter < maxIter; iter++)
     {
         updateTangentMatrixAndResidual();
         applyBoundaryConditions();
-        double normR = R.norm();
-        
-        if (normR < tol)
+        double normR_scale = (R * scaleFactor).norm();
+
+        if (normR_scale < tol)
         {
-            std::cout << "Converged! Norm of residual: " << normR << std::endl;
-            break;
+            std::cout << "Converged! Norm of residual: " << normR_scale << std::endl;
+            return true;
         }
 
-        std::cout << "Iteration: " << iter + 1 << std::endl;
-        std::cout << "Norm of residual: " << normR << std::endl;
-
+        Spinner spinner(
+            "\033[1;32m[Process]\033[0m Iteration " + std::to_string(iter + 1) + ": ", 
+            "Iteration " + std::to_string(iter + 1) + " time: ",100);
+        
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
         Eigen::VectorXd du;
         solver.compute(K);
-        du = solver.solve(R);
+        du = solver.solve(R * scaleFactor);
         U += du;
     }
+    return false;  // Convergence failed
+}
 
+void FiniteElementSolver::writeToFile()
+{
     std::string current_path = std::filesystem::current_path().string();
     std::string resultpath = current_path + "\\.." + "\\.." + "\\FEoutput";
     if (std::filesystem::exists(resultpath)){
@@ -488,3 +469,43 @@ void FiniteElementSolver::solveNonlinear()
         avgFieldAtNodes(i, filenames[i], true);
     }
 }
+
+
+// void FiniteElementSolver::solve_nonlinear()
+// {
+//     const int maxIter = 20; // Maximum number of iterations in each Newton-Raphson step
+//     const double tol = 1e-6; // Tolerance for global convergence
+//     double scaleFactor = 1.0; // Scale factor for the Newton-Raphson step
+//     double remainingForce = 1.0;
+
+//     Eigen::VectorXd U_backup = U;
+
+//     while (true)
+//     {
+//         std::cout << "\nStarting new nonlinear solve with scale factor: " << scaleFactor << std::endl;
+
+//         U = U_backup;
+
+//         bool converged = performNewtonIteration(maxIter, tol, scaleFactor);
+
+//         if (converged)
+//         {
+//             std::cout << "Converged successfully at scale factor: " << scaleFactor << std::endl;
+//         }
+//         else
+//         {
+//             std::cout << "Max iterations reached." << std::endl;
+//             updateTangentMatrixAndResidual();
+//             applyBoundaryConditions();
+//         }
+        
+//         double normR = R.norm();
+//         if (normR < tol)
+//         {
+//             std::cout << "Global convergence achieved! Final residual norm: " << normR << std::endl;
+//             break;
+//         }
+
+//         scaleFactor *= 0.5;
+//     }
+// }

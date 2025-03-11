@@ -1,10 +1,18 @@
 #include "LinearElasticMaterial.h"
 
-LinearElasticMaterial::LinearElasticMaterial(){}
-void LinearElasticMaterial::setproperties(double E, double nu)
+void LinearElasticMaterial::setMaterialParameters(const std::unordered_map<std::string, double>& parameters)
 {
-	E_ = E;
-	nu_ = nu;
+    materialParams_ = parameters;
+
+    if (materialParams_.find("E") == materialParams_.end() || materialParams_.find("nu") == materialParams_.end())
+    {
+        std::cerr << "Error: Material parameters not set" << std::endl;
+        return;
+    }
+
+	E_ = materialParams_["E"];
+	nu_ = materialParams_["nu"];
+
     // Calculate the Lame parameters
     double lambda_ = E_ * nu_ / ((1.0 + nu_) * (1.0 - 2.0 * nu_));
     double mu_ = E_ / (2.0 * (1.0 + nu_));
@@ -17,7 +25,6 @@ void LinearElasticMaterial::setproperties(double E, double nu)
         0, 0, 0, mu_, 0, 0,
         0, 0, 0, 0, mu_, 0,
         0, 0, 0, 0, 0, mu_;
-
 }
 
     /**
@@ -30,8 +37,6 @@ void LinearElasticMaterial::setproperties(double E, double nu)
 void LinearElasticMaterial::updateStressAndTangent(const Eigen::VectorXd &strain, 
                                 Eigen::VectorXd &stress, Eigen::MatrixXd &tangent)
 {
-    // Calculate the stress
     stress = D_ * strain;
-    // Calculate the tangent
     tangent = D_;
 }
