@@ -24,17 +24,18 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     int numNodes = static_cast<int>(Node.rows());
     int numElements = static_cast<int>(Element.rows());
 
-    K = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
-    R = Eigen::SparseVector<double>(numNodes * 3, 1);
-    U = Eigen::VectorXd::Zero(numNodes * 3);
+    K_ = Eigen::SparseMatrix<double>(numNodes * 3, numNodes * 3);
+    F_ = Eigen::SparseVector<double>(numNodes * 3, 1);
+    Q_ = Eigen::SparseVector<double>(numNodes * 3, 1);
+    R_ = Eigen::SparseVector<double>(numNodes * 3, 1);
+    U_ = Eigen::VectorXd::Zero(numNodes * 3);
+    initializeExternalForce(F_);
 
     initializematerial();
     std::unordered_map<std::string, double> matParams = {
         {"E", materialData(0, 0)},
         {"nu", materialData(0, 1)}};
-    material->setMaterialParameters(matParams);
-
-    initializeResidual();
+    material_->setMaterialParameters(matParams);
     
     elements.reserve(numElements);
 
@@ -48,7 +49,7 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
             elemnodeCoor.row(j) = Node.row(elemnode(j) - 1);
         }
 
-        C3D8 elem(i + 1, material);
+        C3D8 elem(i + 1, material_);
         elem.setNodes(elemnode, elemnodeCoor);
         elem.initMaterialPoints();
 
@@ -69,7 +70,7 @@ void FiniteElementSolver::initializematerial()
 
     if (matType == "LinearElastic")
     {
-        material = std::make_shared<LinearElasticMaterial>();
+        material_ = std::make_shared<LinearElasticMaterial>();
     }
     else
     {
@@ -78,59 +79,12 @@ void FiniteElementSolver::initializematerial()
     }
 }
 
-/**
- * @brief Assemble the Global Stiffness Matrix
- * @note The element supported is only C3D8 for now, and the Global Stiffness Matrix 
- *      is not dealed with constraint yet
- * @note This function is only called when solving for linear elastic problem
- */
-void FiniteElementSolver::initializeStiffnessMatrix()
-{
-    const Eigen::MatrixXd& Node = feModel.Node;
-    const Eigen::MatrixXi& Element = feModel.Element;
-    int numNodes = static_cast<int>(Node.rows());
-    int numElements = static_cast<int>(Element.rows());
-
-    std::vector<Eigen::Triplet<double>> tripletList;
-    tripletList.reserve(numElements * 24 * 24);
-    
-    for (int i = 0; i < numElements; i++)
-    {
-        C3D8& elem = elements[i];
-        Eigen::VectorXd elemQ;
-        Eigen::MatrixXd elemK;
-        Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
-        elem.updateTangentAndResidual(elemU, elemQ, elemK);
-
-        const Eigen::VectorXi& elemNodes = feModel.Element.row(i);
-        Eigen::VectorXi elemnodedof(24);
-        for (int j = 0; j < 8; j++)
-        {
-            int nodeIndex = elemNodes(j);
-            for (int k = 0; k < 3; k++)
-            {
-                elemnodedof(j * 3 + k) = nodeIndex * 3 - 3 + k;
-            }
-        }
-
-        for (int j = 0; j < 24; j++)
-        {
-            for (int k = 0; k < 24; k++)
-            {
-                int globalRow = elemnodedof(j);
-                int globalCol = elemnodedof(k);
-                tripletList.emplace_back(globalRow, globalCol, elemK(j, k));
-            }
-        }
-    }
-    K.setFromTriplets(tripletList.begin(), tripletList.end());
-}
 
 /**
  * @brief Assemble the Residual Vector
  * @note This function is called automatically when one FiniteElementSolver object is created
  */
-void FiniteElementSolver::initializeResidual()
+void FiniteElementSolver::initializeExternalForce(Eigen::SparseVector<double>& F)
 {
     const Eigen::MatrixXd& Force = feModel.Force;
     const Eigen::MatrixXd& Node = feModel.Node;
@@ -144,7 +98,7 @@ void FiniteElementSolver::initializeResidual()
         int forcedirection = static_cast<int>(Force(i, 1));
         double forcevalue = static_cast<double>(Force(i, 2));
 
-        R.coeffRef(3 * forcenode - 4 + forcedirection) += forcevalue;
+        F.coeffRef(3 * forcenode - 4 + forcedirection) += forcevalue;
     }
 }
 
@@ -153,7 +107,7 @@ void FiniteElementSolver::initializeResidual()
  * @brief Apply the boundary conditions
  * @note The method is multiply a large number to the K matrix and F vector
  */
-void FiniteElementSolver::applyBoundaryConditions()
+void FiniteElementSolver::applyBoundaryConditions(Eigen::SparseMatrix<double>& K, Eigen::SparseVector<double>& R)
 {
     long double big_num = 1e8;
     const Eigen::MatrixXd& Constr = feModel.Constraint;
@@ -186,7 +140,7 @@ Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int eleme
         int nodeIndex = elementnodeID(i);
         for (int j = 0; j < 3; j++)
         {
-            elemU(i * 3 + j) = U(3 * nodeIndex - 3 + j);
+            elemU(i * 3 + j) = U_(3 * nodeIndex - 3 + j);
         } 
     }
     return elemU;
@@ -332,7 +286,7 @@ void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& f
 }
 
 
-void FiniteElementSolver::updateTangentMatrixAndResidual()
+void FiniteElementSolver::updateTangentMatrixAndInternal()
 {
     const Eigen::MatrixXd& Node = feModel.Node;
     const Eigen::MatrixXi& Element = feModel.Element;
@@ -341,7 +295,7 @@ void FiniteElementSolver::updateTangentMatrixAndResidual()
 
     std::vector<Eigen::Triplet<double>> tripletList; 
     tripletList.reserve(numElements * 24 * 24);
-    Eigen::SparseVector<double> Q = Eigen::SparseVector<double>(numNodes * 3, 1);
+
 
     for (int i = 0; i < numElements; i++)
     {
@@ -349,7 +303,7 @@ void FiniteElementSolver::updateTangentMatrixAndResidual()
         Eigen::VectorXd elemQ;
         Eigen::MatrixXd elemK;
         Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
-        elem.updateTangentAndResidual(elemU, elemQ, elemK);
+        elem.updateTangentAndInternal(elemU, elemQ, elemK);
 
         const Eigen::VectorXi& elemNodes = feModel.Element.row(i);
         Eigen::VectorXi elemnodedof(24);
@@ -366,7 +320,7 @@ void FiniteElementSolver::updateTangentMatrixAndResidual()
         for (int j = 0; j < 24; j++)
         {
             int globalRow = elemnodedof(j);
-            Q.coeffRef(globalRow) += elemQ(j);
+            Q_.coeffRef(globalRow) += elemQ(j);
             for (int k = 0; k < 24; k++)
             {
                 int globalCol = elemnodedof(k);
@@ -374,8 +328,7 @@ void FiniteElementSolver::updateTangentMatrixAndResidual()
             }
         }
     }
-    K.setFromTriplets(tripletList.begin(), tripletList.end());
-    R -= Q;
+    K_.setFromTriplets(tripletList.begin(), tripletList.end());
 }
 
 
@@ -387,18 +340,19 @@ void FiniteElementSolver::solve_linearelastic()
             "\033[1;32m[Process]\033[0m Assembling Global Stiffness Matrix K: ", 
             "Global Stiffness Matrix K assembly time: ",
             100);
-        initializeStiffnessMatrix();
+        updateTangentMatrixAndInternal();
     }
     std::cout << "\033[1;32m[Info]\033[0m "
             << "Global Stiffness Matrix K is "
-            << "\033[1;32m" << "[" << K.rows() << ", " << K.cols() << "]\033[0m\n";
+            << "\033[1;32m" << "[" << K_.rows() << ", " << K_.cols() << "]\033[0m\n";
 
     {
         // Spinner spinner(
         //     "\033[1;32m[Process]\033[0m Applying boundary conditions: ",
         //     "Boundary conditions application time: ",
         //     1 );
-        applyBoundaryConditions();
+        R_ = F_ - Q_;
+        applyBoundaryConditions(K_, R_);
     }
 
     {
@@ -407,8 +361,8 @@ void FiniteElementSolver::solve_linearelastic()
             "System solution time: ",
             100); 
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
-        solver.compute(K);
-        U = solver.solve(R);
+        solver.compute(K_);
+        U_ = solver.solve(R_);
     }
 
     {  
@@ -419,23 +373,26 @@ void FiniteElementSolver::solve_linearelastic()
             Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
             Eigen::VectorXd elemQ;
             Eigen::MatrixXd elemK;
-            elem.updateTangentAndResidual(elemU, elemQ, elemK);
+            elem.updateTangentAndInternal(elemU, elemQ, elemK);
         }
     }
     writeToFile();
 }
 
-bool FiniteElementSolver::performNewtonIteration(int maxIter, double tol, double scaleFactor)
+bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double scaleFactor)
 {
-    for (int iter = 0; iter < maxIter; iter++)
+    Eigen::VectorXd U_backup = U_;
+    for (int iter = 0; iter < maxIter + 1; iter++)
     {
-        updateTangentMatrixAndResidual();
-        applyBoundaryConditions();
-        double normR_scale = (R * scaleFactor).norm();
+        updateTangentMatrixAndInternal();
+        Eigen::SparseVector<double> R_scale = (F_ - Q_) * scaleFactor;
+        applyBoundaryConditions(K_, R_scale);
+        double normR_scale = R_scale.norm();
 
         if (normR_scale < tol)
         {
-            std::cout << "Converged! Norm of residual: " << normR_scale << std::endl;
+            std::cout << "Converged! Total iterations: " << iter << "\n"
+                      << "Final residual norm: " << normR_scale << std::endl;
             return true;
         }
 
@@ -445,10 +402,11 @@ bool FiniteElementSolver::performNewtonIteration(int maxIter, double tol, double
         
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
         Eigen::VectorXd du;
-        solver.compute(K);
-        du = solver.solve(R * scaleFactor);
-        U += du;
+        solver.compute(K_);
+        du = solver.solve(R_scale);
+        U_ += du;
     }
+    U_ = U_backup;
     return false;  // Convergence failed
 }
 
@@ -460,7 +418,7 @@ void FiniteElementSolver::writeToFile()
         std::filesystem::remove_all(resultpath);
     }
     std::filesystem::create_directory(resultpath);  
-    saveMatrix2TXT(U, resultpath, "Displacement.txt", 12);
+    saveMatrix2TXT(U_, resultpath, "Displacement.txt", 12);
 
     getAllElementStress(true);
     std::vector<std::string> filenames = {"Strain.txt", "Stress.txt", "PrincipalStrain.txt", "PrincipalStress.txt"};
@@ -471,41 +429,35 @@ void FiniteElementSolver::writeToFile()
 }
 
 
-// void FiniteElementSolver::solve_nonlinear()
-// {
-//     const int maxIter = 20; // Maximum number of iterations in each Newton-Raphson step
-//     const double tol = 1e-6; // Tolerance for global convergence
-//     double scaleFactor = 1.0; // Scale factor for the Newton-Raphson step
-//     double remainingForce = 1.0;
+void FiniteElementSolver::solve_adaptive_nonlinear()
+{
+    int maxIter = 10;                       // Maximum number of iterations
+    double tol = 1e-6;                      // Tolerance for convergence
+    double scaleFactor = 1.0;               // total load factor
+    const double scaleFactorDecay = 0.5;    // reduction factor
+    double minScaleFactor = 1e-3;           // Minimum scale factor
 
-//     Eigen::VectorXd U_backup = U;
+    R_ = F_; // Initial residual force
 
-//     while (true)
-//     {
-//         std::cout << "\nStarting new nonlinear solve with scale factor: " << scaleFactor << std::endl;
-
-//         U = U_backup;
-
-//         bool converged = performNewtonIteration(maxIter, tol, scaleFactor);
-
-//         if (converged)
-//         {
-//             std::cout << "Converged successfully at scale factor: " << scaleFactor << std::endl;
-//         }
-//         else
-//         {
-//             std::cout << "Max iterations reached." << std::endl;
-//             updateTangentMatrixAndResidual();
-//             applyBoundaryConditions();
-//         }
-        
-//         double normR = R.norm();
-//         if (normR < tol)
-//         {
-//             std::cout << "Global convergence achieved! Final residual norm: " << normR << std::endl;
-//             break;
-//         }
-
-//         scaleFactor *= 0.5;
-//     }
-// }
+    while (R_.norm() > tol)
+    {
+        bool converged = perform_Newton_Raphson(maxIter, tol, scaleFactor);
+        if (converged)
+        {
+            R_ = F_ - Q_;   // Calculate the new residual force
+            applyBoundaryConditions(K_, R_);
+            scaleFactor = 1.0; // Reset the scale factor
+        }
+        else
+        {
+            scaleFactor *= scaleFactorDecay;
+            if (scaleFactor < minScaleFactor)
+            {
+                std::cerr << "Error: Solution did not converge even with minimal scale factor!" << std::endl;
+                return;
+            }
+            std::cout << "Solution not converged, reducing load factor to: " << scaleFactor << std::endl;
+        }
+    }
+    writeToFile(); // 
+}

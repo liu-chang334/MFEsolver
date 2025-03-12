@@ -19,11 +19,13 @@ class FiniteElementSolver
 {
 public:
     const FiniteElementModel& feModel;
-    std::shared_ptr<Material> material;
+    std::shared_ptr<Material> material_;
 
-    Eigen::SparseMatrix<double> K;
-    Eigen::SparseVector<double> R;
-    Eigen::VectorXd U;
+    Eigen::SparseVector<double> F_;
+    Eigen::SparseMatrix<double> K_;
+    Eigen::SparseVector<double> Q_;
+    Eigen::SparseVector<double> R_;
+    Eigen::VectorXd U_;
 
     std::vector<C3D8> elements;
     std::vector<std::vector<Eigen::MatrixXd>> tmp_matrices;
@@ -33,21 +35,22 @@ public:
     FiniteElementSolver(const FiniteElementModel& feModel);
 
     void initializematerial();
-    void initializeStiffnessMatrix();
-    void initializeResidual();
-    void applyBoundaryConditions();
-    void updateTangentMatrixAndResidual();
+    void initializeExternalForce(Eigen::SparseVector<double>& F);
+    void applyBoundaryConditions(Eigen::SparseMatrix<double>& K, Eigen::SparseVector<double>& R);
+    void updateTangentMatrixAndInternal();
     void solve_linearelastic();
-    void solve_nonlinear();
-    bool performNewtonIteration(int maxIter, double tol, double scaleFactor);
+    void solve_adaptive_nonlinear();
+    bool perform_Newton_Raphson(int maxIter, double tol, double scaleFactor = 1.0);
 
     Eigen::VectorXd getElementNodesDisplacement(const int elementID);
-    void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, bool extrapolatetoNodes = true); 
+    void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, 
+                                    bool extrapolatetoNodes = true); 
     void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,
                                     Eigen::MatrixXd &principalStrain, Eigen::MatrixXd &principalStress, 
                                     bool extrapolatetoNodes = true); 
     void getAllElementStress(bool is_principal = true);  
-    void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& filename, bool is_write = true);
+    void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& filename, 
+                                                bool is_write = true);
 
     void FiniteElementSolver::writeToFile();
     

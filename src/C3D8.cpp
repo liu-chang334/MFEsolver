@@ -339,7 +339,7 @@ double C3D8::calcuVolume()
 }
 
 
-void C3D8::updateTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
+void C3D8::updateTangentAndInternal(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
 {
     elemQ = Eigen::VectorXd::Zero(24);
     elemK = Eigen::MatrixXd::Zero(24, 24);    

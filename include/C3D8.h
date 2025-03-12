@@ -57,7 +57,7 @@ public:
 
     // void setMaterial(LinearElasticMaterial* material) { material_ = material; };
     void initMaterialPoints();
-    void updateTangentAndResidual(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK);
+    void updateTangentAndInternal(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK);
     void updateMaterialPoint(MaterialPoint& mp, const Eigen::VectorXd& strain, const Eigen::VectorXd& stress);
 
     Eigen::VectorXd calcuShapeFunctions(double r, double s, double t);

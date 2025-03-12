@@ -21,10 +21,8 @@ int main()
 
     // initialize the FEA solver and solve
     FiniteElementSolver feaSolver(feaModel);
-    feaSolver.solve_linearelastic();
-
-    // bool is_success = feaSolver.performNewtonIteration(10, 1e-6, 1.0);
-    // feaSolver.writeToFile();
+    // feaSolver.solve_linearelastic();
+    feaSolver.solve_adaptive_nonlinear();
 
     // post-process
     FEDataModelPost feaModelPost(feaModel);
