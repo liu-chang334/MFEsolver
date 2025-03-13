@@ -26,6 +26,7 @@ public:
     Eigen::SparseVector<double> Q_;
     Eigen::SparseVector<double> R_;
     Eigen::VectorXd U_;
+    Eigen::VectorXd DU_;
 
     std::vector<C3D8> elements;
     std::vector<std::vector<Eigen::MatrixXd>> tmp_matrices;
@@ -39,10 +40,10 @@ public:
     void applyBoundaryConditions(Eigen::SparseMatrix<double>& K, Eigen::SparseVector<double>& R);
     void updateTangentMatrixAndInternal();
     void solve_linearelastic();
-    void solve_adaptive_nonlinear();
-    bool perform_Newton_Raphson(int maxIter, double tol, double scaleFactor = 1.0);
+    void solve_adaptive_nonlinear(double& step_size, int& maxIter);
+    bool perform_Newton_Raphson(int maxIter, double tol, double scaleFactor = 1.0, double step_size = 0.1);
 
-    Eigen::VectorXd getElementNodesDisplacement(const int elementID);
+    Eigen::VectorXd getElementNodes_DU(const int elementID);
     void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, 
                                     bool extrapolatetoNodes = true); 
     void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress,

@@ -339,7 +339,7 @@ double C3D8::calcuVolume()
 }
 
 
-void C3D8::updateTangentAndInternal(const Eigen::VectorXd& u, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
+void C3D8::updateTangentAndInternal(const Eigen::VectorXd& du, Eigen::VectorXd& elemQ, Eigen::MatrixXd& elemK)
 {
     elemQ = Eigen::VectorXd::Zero(24);
     elemK = Eigen::MatrixXd::Zero(24, 24);    
@@ -348,12 +348,15 @@ void C3D8::updateTangentAndInternal(const Eigen::VectorXd& u, Eigen::VectorXd& e
     {
         Eigen::MatrixXd Bbar = mp.Bbar;
         double detJ = mp.detJ;
-        Eigen::VectorXd strain = Bbar * u;
-
-        Eigen::VectorXd stress(6);
+        Eigen::VectorXd dstrain = Bbar * du;
+        Eigen::VectorXd dstress(6);
         Eigen::MatrixXd tangent(6, 6);
-        material_->updateStressAndTangent(strain, stress, tangent);
+        material_->updateStressAndTangent(dstrain, dstress, tangent);
 
+        Eigen::VectorXd strain(6);
+        Eigen::VectorXd stress(6);
+        strain = dstrain + mp.strain;
+        stress = dstress + mp.stress;
         elemQ += Bbar.transpose() * stress * detJ * mp.weight;
         elemK += Bbar.transpose() * tangent * Bbar * detJ * mp.weight;
 

@@ -22,7 +22,9 @@ int main()
     // initialize the FEA solver and solve
     FiniteElementSolver feaSolver(feaModel);
     // feaSolver.solve_linearelastic();
-    feaSolver.solve_adaptive_nonlinear();
+    double step_size = 0.25;  // (1 / step_size) must be an integer
+    int maxIter = 20;  
+    feaSolver.solve_adaptive_nonlinear(step_size, maxIter);
 
     // post-process
     FEDataModelPost feaModelPost(feaModel);

@@ -29,6 +29,7 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     Q_ = Eigen::SparseVector<double>(numNodes * 3, 1);
     R_ = Eigen::SparseVector<double>(numNodes * 3, 1);
     U_ = Eigen::VectorXd::Zero(numNodes * 3);
+    DU_ = Eigen::VectorXd::Zero(numNodes * 3);
     initializeExternalForce(F_);
 
     initializematerial();
@@ -130,20 +131,20 @@ void FiniteElementSolver::applyBoundaryConditions(Eigen::SparseMatrix<double>& K
  * @param[in] elementID Element ID
  * @return Eigen::VectorXd Displacement vector at nodes of specified element
  */
-Eigen::VectorXd FiniteElementSolver::getElementNodesDisplacement(const int elementID)
+Eigen::VectorXd FiniteElementSolver::getElementNodes_DU(const int elementID)
 {
     Eigen::VectorXi elementnodeID;
     feModel.getNodesIDofElement(elementID, elementnodeID);
-    Eigen::VectorXd elemU(24);
+    Eigen::VectorXd delta_elemU(24);
     for (int i = 0; i < 8; i++) 
     {
         int nodeIndex = elementnodeID(i);
         for (int j = 0; j < 3; j++)
         {
-            elemU(i * 3 + j) = U_(3 * nodeIndex - 3 + j);
+            delta_elemU(i * 3 + j) = DU_(3 * nodeIndex - 3 + j);
         } 
     }
-    return elemU;
+    return delta_elemU;
 }
 
 void FiniteElementSolver::getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, bool extrapolatetoNodes)
@@ -288,6 +289,9 @@ void FiniteElementSolver::avgFieldAtNodes(int matrix_index, const std::string& f
 
 void FiniteElementSolver::updateTangentMatrixAndInternal()
 {
+    K_.setZero();
+    Q_.setZero();
+
     const Eigen::MatrixXd& Node = feModel.Node;
     const Eigen::MatrixXi& Element = feModel.Element;
     int numNodes = static_cast<int>(Node.rows());
@@ -302,8 +306,8 @@ void FiniteElementSolver::updateTangentMatrixAndInternal()
         C3D8& elem = elements[i];
         Eigen::VectorXd elemQ;
         Eigen::MatrixXd elemK;
-        Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
-        elem.updateTangentAndInternal(elemU, elemQ, elemK);
+        Eigen::VectorXd delta_elemU = getElementNodes_DU(i + 1);
+        elem.updateTangentAndInternal(delta_elemU, elemQ, elemK);
 
         const Eigen::VectorXi& elemNodes = feModel.Element.row(i);
         Eigen::VectorXi elemnodedof(24);
@@ -363,6 +367,7 @@ void FiniteElementSolver::solve_linearelastic()
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
         solver.compute(K_);
         U_ = solver.solve(R_);
+        DU_ = U_;
     }
 
     {  
@@ -370,7 +375,7 @@ void FiniteElementSolver::solve_linearelastic()
         for (int i = 0; i < numElements; i++)
         {
             C3D8& elem = elements[i];
-            Eigen::VectorXd elemU = getElementNodesDisplacement(i + 1);
+            Eigen::VectorXd elemU = getElementNodes_DU(i + 1);
             Eigen::VectorXd elemQ;
             Eigen::MatrixXd elemK;
             elem.updateTangentAndInternal(elemU, elemQ, elemK);
@@ -379,13 +384,36 @@ void FiniteElementSolver::solve_linearelastic()
     writeToFile();
 }
 
-bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double scaleFactor)
+bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double scaleFactor, double step_size)
 {
     Eigen::VectorXd U_backup = U_;
+    DU_ = Eigen::VectorXd::Zero(U_.size());
+
+    // Copy the current strain and stress tensor to a temporary vector
+    // We will use this vector to recover the strain and stress tensor when the solution is not converged
+    std::vector<Eigen::MatrixXd> tmp_elem_strain;
+    std::vector<Eigen::MatrixXd> tmp_elem_stress;
+    for (auto& elem : elements)
+    {
+        int i = 0;
+        Eigen::MatrixXd tmp_strain(6, 8);
+        Eigen::MatrixXd tmp_stress(6, 8);
+        for (auto& mp : elem.materialPoints)
+        {
+            tmp_strain.col(i) = mp.strain;
+            tmp_stress.col(i) = mp.stress;
+            i++;
+        }
+        tmp_elem_strain.push_back(tmp_strain);
+        tmp_elem_stress.push_back(tmp_stress);
+    }
+    // To solve the nonlinear problem, we use the Newton-Raphson method
+    // The iteration is performed until the residual norm is smaller than the tolerance
+    // or the maximum number of iterations is reached
     for (int iter = 0; iter < maxIter + 1; iter++)
     {
-        updateTangentMatrixAndInternal();
-        Eigen::SparseVector<double> R_scale = (F_ - Q_) * scaleFactor;
+        updateTangentMatrixAndInternal(); 
+        Eigen::SparseVector<double> R_scale = (F_ * step_size - Q_) * scaleFactor;
         applyBoundaryConditions(K_, R_scale);
         double normR_scale = R_scale.norm();
 
@@ -397,16 +425,32 @@ bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double
         }
 
         Spinner spinner(
-            "\033[1;32m[Process]\033[0m Iteration " + std::to_string(iter + 1) + ": ", 
-            "Iteration " + std::to_string(iter + 1) + " time: ",100);
+            "\033[1;32m[Process]\033[0m Step size = " + std::to_string(step_size) + ". Iteration: " + std::to_string(iter+1) + " ",
+            "Step size = " + std::to_string(step_size) + ". Iteration time: ",
+            100);
         
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
         Eigen::VectorXd du;
         solver.compute(K_);
         du = solver.solve(R_scale);
         U_ += du;
+        DU_ = du;
     }
-    U_ = U_backup;
+    // When the maximum number of iterations is reached, the solution is not converged
+    // Recover the displacement vector to the previous result
+    U_ = U_backup; 
+    // When the maximum number of iterations is reached, the solution is not converged
+    // Recover the stress and strain tensor to the previous result
+    for (int i = 0; i < elements.size(); i++)
+    {
+        auto& elem = elements[i];
+        for (int j = 0; j < 8; j++)
+        {
+            elem.materialPoints[j].strain = tmp_elem_strain[i].col(j);
+            elem.materialPoints[j].stress = tmp_elem_stress[i].col(j);
+        }
+
+    }
     return false;  // Convergence failed
 }
 
@@ -429,26 +473,33 @@ void FiniteElementSolver::writeToFile()
 }
 
 
-void FiniteElementSolver::solve_adaptive_nonlinear()
+void FiniteElementSolver::solve_adaptive_nonlinear(double& step_size, int& maxIter)
 {
-    int maxIter = 10;                       // Maximum number of iterations
+                                            // Maximum number of iterations
     double tol = 1e-6;                      // Tolerance for convergence
-    double scaleFactor = 1.0;               // total load factor
+    double scaleFactor = 1.0;               // load factor
     const double scaleFactorDecay = 0.5;    // reduction factor
     double minScaleFactor = 1e-3;           // Minimum scale factor
+                                            // step size each iteration
+    int counter = 0;
 
     R_ = F_; // Initial residual force
 
     while (R_.norm() > tol)
     {
-        bool converged = perform_Newton_Raphson(maxIter, tol, scaleFactor);
-        if (converged)
+        bool converged = perform_Newton_Raphson(maxIter, tol, scaleFactor, step_size*(counter+1));
+
+        if (converged && scaleFactor == 1.0)
+        {
+            R_ = F_ - Q_;   // Calculate the new residual force
+            applyBoundaryConditions(K_, R_);
+            counter += 1;
+        } else if (converged && scaleFactor != 1.0)
         {
             R_ = F_ - Q_;   // Calculate the new residual force
             applyBoundaryConditions(K_, R_);
             scaleFactor = 1.0; // Reset the scale factor
-        }
-        else
+        } else if (!converged)
         {
             scaleFactor *= scaleFactorDecay;
             if (scaleFactor < minScaleFactor)
@@ -459,5 +510,6 @@ void FiniteElementSolver::solve_adaptive_nonlinear()
             std::cout << "Solution not converged, reducing load factor to: " << scaleFactor << std::endl;
         }
     }
-    writeToFile(); // 
+
+    writeToFile(); 
 }

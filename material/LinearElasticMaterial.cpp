@@ -34,9 +34,9 @@ void LinearElasticMaterial::setMaterialParameters(const std::unordered_map<std::
      * @param[out] stress: The current stress or stress increment
      * @param[out] tangent: The current tangent stiffness matrix
      */
-void LinearElasticMaterial::updateStressAndTangent(const Eigen::VectorXd &strain, 
-                                Eigen::VectorXd &stress, Eigen::MatrixXd &tangent)
+void LinearElasticMaterial::updateStressAndTangent(const Eigen::VectorXd &dstrain, 
+                                Eigen::VectorXd &dstress, Eigen::MatrixXd &tangent)
 {
-    stress = D_ * strain;
+    dstress = D_ * dstrain;
     tangent = D_;
 }
