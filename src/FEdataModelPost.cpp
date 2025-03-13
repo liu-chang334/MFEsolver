@@ -24,11 +24,11 @@ void ApplyParaViewColorMap(vtkMapper* mapper, const double range[2]) {
     ctf->SetColorSpaceToDiverging();
 
     ctf->AddRGBPoint(range[0],               0.231, 0.298, 0.753); 
-    ctf->AddRGBPoint(0.4*(range[0]+range[1]),0.865, 0.865, 0.865);
+    ctf->AddRGBPoint(0.35*(range[0]+range[1]),0.865, 0.865, 0.865);
     ctf->AddRGBPoint(range[1],               0.706, 0.016, 0.150);
     
     // ctf->DiscretizeOn();
-    // ctf->SetNumberOfValues(5); 
+    // ctf->SetNumberOfValues(10); 
 
     mapper->SetLookupTable(ctf);
     mapper->UseLookupTableScalarRangeOn();
@@ -259,26 +259,15 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
     vtkNew<vtkArrayCalculator> calculator;
     calculator->SetInputData(ugrid);
     calculator->SetAttributeTypeToPointData();
+    std::string resultarrayname;
     if (fieldname == "U")
     {
         calculator->AddScalarVariable("U1", "Displacement", 0);
         calculator->AddScalarVariable("U2", "Displacement", 1);
         calculator->AddScalarVariable("U3", "Displacement", 2);
-        if (component == 1)
-        {
-            calculator->SetFunction("U1");
-            calculator->SetResultArrayName("U1");
-        }else if (component == 2)
-        {
-            calculator->SetFunction("U2");
-            calculator->SetResultArrayName("U2"); 
-        }else if (component == 3)
-        {
-            calculator->SetFunction("U3");
-            calculator->SetResultArrayName("U3");
-        }
+        resultarrayname = "U" + std::to_string(component);
     }
-    if (fieldname == "E")
+    else if (fieldname == "E")
     {
         calculator->AddScalarVariable("E11", "Strain", 0);
         calculator->AddScalarVariable("E22", "Strain", 1);
@@ -286,52 +275,16 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
         calculator->AddScalarVariable("E12", "Strain", 3);
         calculator->AddScalarVariable("E13", "Strain", 4);
         calculator->AddScalarVariable("E23", "Strain", 5);
-        if (component == 11)
-        {
-            calculator->SetFunction("E11");
-            calculator->SetResultArrayName("E11");
-        }else if (component == 22)
-        {
-            calculator->SetFunction("E22");
-            calculator->SetResultArrayName("E22"); 
-        }else if (component == 33)
-        {
-            calculator->SetFunction("E33");
-            calculator->SetResultArrayName("E33");
-        }else if (component == 12)
-        {
-            calculator->SetFunction("E12");
-            calculator->SetResultArrayName("E12");
-        }else if (component == 13)
-        {
-            calculator->SetFunction("E13");
-            calculator->SetResultArrayName("E13"); 
-        }else if (component == 23)
-        {
-            calculator->SetFunction("E23");
-            calculator->SetResultArrayName("E23");
-        }
+        resultarrayname = "E" + std::to_string(component);
     }
-    if (fieldname == "E_princ")
+    else if (fieldname == "E_princ")
     {
         calculator->AddScalarVariable("E1", "PrincipalStrain", 0);
         calculator->AddScalarVariable("E2", "PrincipalStrain", 1);
         calculator->AddScalarVariable("E3", "PrincipalStrain", 2); 
-        if (component == 1)
-        {
-            calculator->SetFunction("E1");
-            calculator->SetResultArrayName("E1");
-        }else if (component == 2)
-        {
-            calculator->SetFunction("E2");
-            calculator->SetResultArrayName("E2");
-        }else if (component == 3)
-        {
-            calculator->SetFunction("E3");
-            calculator->SetResultArrayName("E3");
-        }
+        resultarrayname = "E" + std::to_string(component);
     }
-    if (fieldname == "S")
+    else if (fieldname == "S")
     {
         calculator->AddScalarVariable("S11", "Stress", 0);
         calculator->AddScalarVariable("S22", "Stress", 1);
@@ -339,56 +292,21 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
         calculator->AddScalarVariable("S12", "Stress", 3);
         calculator->AddScalarVariable("S13", "Stress", 4);
         calculator->AddScalarVariable("S23", "Stress", 5);
-        if (component == 11)
-        {
-            calculator->SetFunction("S11");
-            calculator->SetResultArrayName("S11");
-        }else if (component == 22)
-        {
-            calculator->SetFunction("S22");
-            calculator->SetResultArrayName("S22"); 
-        }else if (component == 33)
-        {
-            calculator->SetFunction("S33");
-            calculator->SetResultArrayName("S33");
-        }else if (component == 12)
-        {
-            calculator->SetFunction("S12");
-            calculator->SetResultArrayName("S12"); 
-        }else if (component == 13)
-        {
-            calculator->SetFunction("S13");
-            calculator->SetResultArrayName("S13");
-        }else if (component == 23)
-        {
-            calculator->SetFunction("S23");
-            calculator->SetResultArrayName("S23");
-        }
+        resultarrayname = "S" + std::to_string(component);
     }
-    if (fieldname == "S_princ")
+    else if (fieldname == "S_princ")
     {
         calculator->AddScalarVariable("S1", "PrincipalStress", 0);
         calculator->AddScalarVariable("S2", "PrincipalStress", 1);
         calculator->AddScalarVariable("S3", "PrincipalStress", 2);
-        if (component == 1) 
-        {
-            calculator->SetFunction("S1");
-            calculator->SetResultArrayName("S1"); 
-        }else if (component == 2)
-        {
-            calculator->SetFunction("S2");
-            calculator->SetResultArrayName("S2");
-        }else if (component == 3)
-        {
-            calculator->SetFunction("S3");
-            calculator->SetResultArrayName("S3");
-        }
+        resultarrayname = "S" + std::to_string(component); 
     }
+    calculator->SetFunction(resultarrayname.c_str());
+    calculator->SetResultArrayName(resultarrayname.c_str());
     calculator->Update();
 
     double range[2];
     vtkDataSet* dataSet = vtkDataSet::SafeDownCast(calculator->GetOutput());
-    std::string resultarrayname = calculator->GetResultArrayName();
     dataSet->GetPointData()->GetArray(resultarrayname.c_str())->GetRange(range);
 
     vtkNew<vtkDataSetMapper> mapper;
@@ -412,16 +330,22 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
     vtkNew<vtkRenderer> renderer;
     renderer->AddActor(surfaceActor);
     renderer->AddActor(wireframeActor);
-    renderer->SetBackground(colors->GetColor3d("SlateGray").GetData());
+    renderer->SetBackground(colors->GetColor3d("White").GetData());
 
     vtkNew<vtkScalarBarActor> scalarBar;
     scalarBar->UnconstrainedFontSizeOn(); 
     scalarBar->SetLookupTable(mapper->GetLookupTable());
     scalarBar->SetTitle(resultarrayname.c_str());
     scalarBar->GetTitleTextProperty()->SetFontSize(30);
-    scalarBar->SetNumberOfLabels(10);
+    scalarBar->GetTitleTextProperty()->SetFontFamilyToTimes();
+    scalarBar->GetTitleTextProperty()->SetColor(0, 0, 0); 
+    scalarBar->GetTitleTextProperty()->SetItalic(0); 
+    scalarBar->SetNumberOfLabels(6);
     scalarBar->SetLabelFormat("%.3e");
     scalarBar->GetLabelTextProperty()->SetFontSize(24);
+    scalarBar->GetLabelTextProperty()->SetFontFamilyToTimes();
+    scalarBar->GetLabelTextProperty()->SetColor(0, 0, 0);
+    scalarBar->GetLabelTextProperty()->SetItalic(0);
     renderer->AddActor2D(scalarBar);
 
     vtkNew<vtkRenderWindow> renderWindow;

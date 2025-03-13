@@ -25,6 +25,11 @@
 #include <vtkColorTransferFunction.h>
 #include <vtkDiscretizableColorTransferFunction.h>
 #include <vtkTextProperty.h>
+#include <vtkAxesActor.h> 
+#include <vtkOrientationMarkerWidget.h>
+#include <vtkTextMapper.h>
+#include <vtkAxesActor.h>
+#include <vtkCaptionActor2D.h> 
 
 #include <Eigen/Dense>
 #include "FiniteElementModel.h"    

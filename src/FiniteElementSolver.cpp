@@ -425,7 +425,7 @@ bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double
         }
 
         Spinner spinner(
-            "\033[1;32m[Process]\033[0m Step size = " + std::to_string(step_size) + ". Iteration: " + std::to_string(iter+1) + " ",
+            "\033[1;32m[Process]\033[0m Step size = " + std::to_string(step_size) + ". Iteration " + std::to_string(iter+1) + ": ",
             "Step size = " + std::to_string(step_size) + ". Iteration time: ",
             100);
         
