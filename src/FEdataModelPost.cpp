@@ -352,11 +352,23 @@ void FEDataModelPost::FEdataPlotScalar(std::string fieldname, int component)
     renderWindow->AddRenderer(renderer);
     renderWindow->SetSize(1200, 800);
     renderWindow->Render();
+
     vtkNew<vtkRenderWindowInteractor> renderWindowInteractor;
     vtkNew<vtkInteractorStyleTrackballCamera> style;
     renderWindowInteractor->SetRenderWindow(renderWindow);
     renderWindowInteractor->SetInteractorStyle(style);
+
+    vtkNew<vtkAxesActor> axes;
+    // axes->SetTotalLength(10.0, 10.0, 10.0);
+    vtkNew<vtkOrientationMarkerWidget> axesWidget;
+    axesWidget->SetOrientationMarker(axes);
+    axesWidget->SetInteractor(renderWindowInteractor);
+    axesWidget->SetViewport(0.0, 0.0, 0.3, 0.3);
+    axesWidget->SetEnabled(1);
+    axesWidget->InteractiveOn();
+
     renderWindowInteractor->Initialize();
+
     renderWindowInteractor->Start();
 }
 
