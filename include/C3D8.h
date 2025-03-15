@@ -2,9 +2,11 @@
 #define C3D8_H
 
 #include "ElemBase.h"
-#include "../material/LinearElasticMaterial.h"
 #include <Eigen/Sparse>
 #include <vector>
+
+#include "../material/LinearElastic.h"
+#include "../material/IdealElastoplastic.h"
 
 
 struct MaterialPoint

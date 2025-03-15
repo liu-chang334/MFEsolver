@@ -35,7 +35,11 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     initializematerial();
     std::unordered_map<std::string, double> matParams = {
         {"E", materialData(0, 0)},
-        {"nu", materialData(0, 1)}};
+        {"nu", materialData(0, 1)},
+        {"sigma_y", 200.00},
+        {"H", 0.00}
+    };
+
     material_->setMaterialParameters(matParams);
     
     elements.reserve(numElements);
@@ -69,15 +73,9 @@ void FiniteElementSolver::initializematerial()
 {
     const std::string& matType = feModel.MaterialType;
 
-    if (matType == "LinearElastic")
-    {
-        material_ = std::make_shared<LinearElasticMaterial>();
-    }
-    else
-    {
-        std::cerr << "Error: Material type not supported" << std::endl;
-        exit(1);
-    }
+    if (matType == "LinearElastic") {material_ = std::make_shared<LinearElastic>();}
+    else if (matType == "IdealElastoplastic") {material_ = std::make_shared<IdealElastoplastic>();}
+    else {std::cerr << "Error: Material type not supported" << std::endl; exit(1);}
 }
 
 
@@ -384,10 +382,11 @@ void FiniteElementSolver::solve_linearelastic()
     writeToFile();
 }
 
-bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double scaleFactor, double step_size)
+bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double scaleFactor, double step_end, int total_steps)
 {
     Eigen::VectorXd U_backup = U_;
     DU_ = Eigen::VectorXd::Zero(U_.size());
+    double each_step_size = 1.0 / total_steps;
 
     // Copy the current strain and stress tensor to a temporary vector
     // We will use this vector to recover the strain and stress tensor when the solution is not converged
@@ -410,12 +409,15 @@ bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double
     // To solve the nonlinear problem, we use the Newton-Raphson method
     // The iteration is performed until the residual norm is smaller than the tolerance
     // or the maximum number of iterations is reached
-    for (int iter = 0; iter < maxIter + 1; iter++)
+    for (int iter = 0; iter < maxIter; iter++)
     {
         updateTangentMatrixAndInternal(); 
-        Eigen::SparseVector<double> R_scale = (F_ * step_size - Q_) * scaleFactor;
+        // Eigen::SparseVector<double> R_scale = (F_ * step_size - Q_) * scaleFactor;
+        Eigen::SparseVector<double> R_scale = F_ * step_end - Q_;
         applyBoundaryConditions(K_, R_scale);
         double normR_scale = R_scale.norm();
+
+        std::cout << "Iteration " << iter << ": " << normR_scale << std::endl;
 
         if (normR_scale < tol)
         {
@@ -425,8 +427,8 @@ bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double
         }
 
         Spinner spinner(
-            "\033[1;32m[Process]\033[0m Step size = " + std::to_string(step_size) + ". Iteration " + std::to_string(iter+1) + ": ",
-            "Step size = " + std::to_string(step_size) + ". Iteration time: ",
+            "\033[1;32m[Process]\033[0m Step size = " + std::to_string(step_end) + ". Iteration " + std::to_string(iter+1) + ": ",
+            "Step size = " + std::to_string(step_end) + ". Iteration time: ",
             100);
         
         Eigen::SparseLU<Eigen::SparseMatrix<double>> solver;
@@ -476,32 +478,36 @@ void FiniteElementSolver::writeToFile()
 void FiniteElementSolver::solve_adaptive_nonlinear(double& step_size, int& maxIter)
 {
                                             // Maximum number of iterations
-    double tol = 1e-6;                      // Tolerance for convergence
+    double tol = 1e-2;                      // Tolerance for convergence
     double scaleFactor = 1.0;               // load factor
     const double scaleFactorDecay = 0.5;    // reduction factor
     double minScaleFactor = 1e-3;           // Minimum scale factor
                                             // step size each iteration
-    int counter = 0;
+    int total_step = 1/step_size;
+
+    double min_step_size = step_size;
+    double step_size_solved = 0.0;
 
     R_ = F_; // Initial residual force
 
     while (R_.norm() > tol)
     {
-        bool converged = perform_Newton_Raphson(maxIter, tol, scaleFactor, step_size*(counter+1));
+        double step_end = min_step_size + step_size_solved;
+        bool converged = perform_Newton_Raphson(maxIter, tol, scaleFactor, step_end, total_step);
 
-        if (converged && scaleFactor == 1.0)
+        if (converged)
         {
             R_ = F_ - Q_;   // Calculate the new residual force
             applyBoundaryConditions(K_, R_);
-            counter += 1;
-        } else if (converged && scaleFactor != 1.0)
-        {
-            R_ = F_ - Q_;   // Calculate the new residual force
-            applyBoundaryConditions(K_, R_);
-            scaleFactor = 1.0; // Reset the scale factor
+            step_size_solved = step_end;
         } else if (!converged)
         {
             scaleFactor *= scaleFactorDecay;
+            if (scaleFactor * step_size < min_step_size)
+            {
+                min_step_size = scaleFactor * step_size;
+            }
+
             if (scaleFactor < minScaleFactor)
             {
                 std::cerr << "Error: Solution did not converge even with minimal scale factor!" << std::endl;

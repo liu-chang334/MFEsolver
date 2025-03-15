@@ -347,9 +347,9 @@ void C3D8::updateTangentAndInternal(const Eigen::VectorXd& du, Eigen::VectorXd& 
     for (auto& mp : materialPoints)
     {
         Eigen::VectorXd dstrain = mp.Bbar * du;
-        Eigen::VectorXd dstress(6);
         Eigen::MatrixXd tangent(6, 6);
-        material_->updateStressAndTangent(dstrain, dstress, mp.strain, mp.stress, tangent);
+
+        material_->updateStressAndTangent(dstrain, mp, tangent);
 
         elemQ += mp.Bbar.transpose() * mp.stress * mp.detJ * mp.weight;
         elemK += mp.Bbar.transpose() * tangent * mp.Bbar * mp.detJ * mp.weight;

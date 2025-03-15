@@ -58,7 +58,8 @@ public:
     Eigen::MatrixXd Node;
     Eigen::MatrixXi Element;
     Eigen::MatrixXd Material;
-    std::string MaterialType = "LinearElastic";
+    // std::string MaterialType = "LinearElastic";
+    std::string MaterialType = "IdealElastoplastic";  // in checking
     Eigen::MatrixXd Force;
     Eigen::MatrixXd Constraint;
     std::unordered_map<std::string, Eigen::VectorXi> Nsets;
