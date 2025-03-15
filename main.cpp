@@ -22,7 +22,7 @@ int main()
     // initialize the FEA solver and solve
     FiniteElementSolver feaSolver(feaModel);
     // feaSolver.solve_linearelastic();
-    double step_size = 0.25;  // (1 / step_size) must be an integer
+    double step_size = 0.50;  // (1 / step_size) must be an integer
     int maxIter = 20;  
     feaSolver.solve_adaptive_nonlinear(step_size, maxIter);
 
@@ -38,11 +38,11 @@ int main()
     // feaModelPost.FEdataPlotScalar("E", 13);
     // feaModelPost.FEdataPlotScalar("E", 23);
     feaModelPost.FEdataPlotScalar("S", 11);
-    feaModelPost.FEdataPlotScalar("S", 22);
-    feaModelPost.FEdataPlotScalar("S", 33);
-    feaModelPost.FEdataPlotScalar("S", 12);
-    feaModelPost.FEdataPlotScalar("S", 13);
-    feaModelPost.FEdataPlotScalar("S", 23);
+    // feaModelPost.FEdataPlotScalar("S", 22);
+    // feaModelPost.FEdataPlotScalar("S", 33);
+    // feaModelPost.FEdataPlotScalar("S", 12);
+    // feaModelPost.FEdataPlotScalar("S", 13);
+    // feaModelPost.FEdataPlotScalar("S", 23);
     // feaModelPost.FEdataPlotScalar("S_princ", 1);
     // feaModelPost.FEdataPlotScalar("S_princ", 2);
     // feaModelPost.FEdataPlotScalar("S_princ", 3);

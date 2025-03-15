@@ -346,24 +346,13 @@ void C3D8::updateTangentAndInternal(const Eigen::VectorXd& du, Eigen::VectorXd& 
 
     for (auto& mp : materialPoints)
     {
-        Eigen::MatrixXd Bbar = mp.Bbar;
-        double detJ = mp.detJ;
-        Eigen::VectorXd dstrain = Bbar * du;
+        Eigen::VectorXd dstrain = mp.Bbar * du;
         Eigen::VectorXd dstress(6);
         Eigen::MatrixXd tangent(6, 6);
-        material_->updateStressAndTangent(dstrain, dstress, tangent);
+        material_->updateStressAndTangent(dstrain, dstress, mp.strain, mp.stress, tangent);
 
-        Eigen::VectorXd strain(6);
-        Eigen::VectorXd stress(6);
-        strain = dstrain + mp.strain;
-        stress = dstress + mp.stress;
-        elemQ += Bbar.transpose() * stress * detJ * mp.weight;
-        elemK += Bbar.transpose() * tangent * Bbar * detJ * mp.weight;
-
-        // std::cout << "elemQ: " << elemQ.transpose() << std::endl;
- 
-        // update material point
-        updateMaterialPoint(mp, strain, stress);
+        elemQ += mp.Bbar.transpose() * mp.stress * mp.detJ * mp.weight;
+        elemK += mp.Bbar.transpose() * tangent * mp.Bbar * mp.detJ * mp.weight;
     }
 }
 
@@ -381,9 +370,4 @@ Eigen::MatrixXd C3D8::extrapolateTensor(const Eigen::MatrixXd& tensor_at_Gpoints
     return tensor_at_nodes;
 }
 
-void C3D8::updateMaterialPoint(MaterialPoint& mp, const Eigen::VectorXd& strain, const Eigen::VectorXd& stress)
-{
-    mp.strain = strain;
-    mp.stress = stress;
-}
 // Class C3D8 End

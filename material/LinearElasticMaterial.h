@@ -8,8 +8,9 @@ class LinearElasticMaterial : public Material
 public:
     LinearElasticMaterial() = default;
     virtual void setMaterialParameters(const std::unordered_map<std::string, double>& parameters) override;
-    virtual void updateStressAndTangent(const Eigen::VectorXd &strain, 
-                                        Eigen::VectorXd &stress, Eigen::MatrixXd &tangent) override;
+    virtual void updateStressAndTangent(const Eigen::VectorXd &dstrain, Eigen::VectorXd &dstress, Eigen::MatrixXd &tangent) override;
+    virtual void updateStressAndTangent(const Eigen::VectorXd &dstrain, Eigen::VectorXd &dstress, 
+                                         Eigen::VectorXd &strain,  Eigen::VectorXd &stress, Eigen::MatrixXd &tangent) override;
 
 public:
     double E_;
