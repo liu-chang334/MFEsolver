@@ -41,7 +41,7 @@ public:
     void updateTangentMatrixAndInternal();
     void solve_linearelastic();
     void solve_adaptive_nonlinear(double& step_size, int& maxIter);
-    bool perform_Newton_Raphson(int maxIter, double tol, double scaleFactor, double step_end, int total_steps);
+    bool perform_Newton_Raphson(int maxIter, double tol, double step_end);
 
     Eigen::VectorXd getElementNodes_DU(const int elementID);
     void getSpecifiedElementStress(const int elementID, Eigen::MatrixXd &strain, Eigen::MatrixXd &stress, 

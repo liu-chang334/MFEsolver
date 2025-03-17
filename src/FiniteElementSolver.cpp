@@ -36,7 +36,7 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     std::unordered_map<std::string, double> matParams = {
         {"E", materialData(0, 0)},
         {"nu", materialData(0, 1)},
-        {"sigma_y", 200.00},
+        {"sigma_y", 205.00},
         {"H", 0.00}
     };
 
@@ -382,11 +382,10 @@ void FiniteElementSolver::solve_linearelastic()
     writeToFile();
 }
 
-bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double scaleFactor, double step_end, int total_steps)
+bool FiniteElementSolver::perform_Newton_Raphson(int maxIter, double tol, double step_end)
 {
     Eigen::VectorXd U_backup = U_;
     DU_ = Eigen::VectorXd::Zero(U_.size());
-    double each_step_size = 1.0 / total_steps;
 
     // Copy the current strain and stress tensor to a temporary vector
     // We will use this vector to recover the strain and stress tensor when the solution is not converged
@@ -483,7 +482,6 @@ void FiniteElementSolver::solve_adaptive_nonlinear(double& step_size, int& maxIt
     const double scaleFactorDecay = 0.5;    // reduction factor
     double minScaleFactor = 1e-3;           // Minimum scale factor
                                             // step size each iteration
-    int total_step = 1/step_size;
 
     double min_step_size = step_size;
     double step_size_solved = 0.0;
@@ -493,7 +491,7 @@ void FiniteElementSolver::solve_adaptive_nonlinear(double& step_size, int& maxIt
     while (R_.norm() > tol)
     {
         double step_end = min_step_size + step_size_solved;
-        bool converged = perform_Newton_Raphson(maxIter, tol, scaleFactor, step_end, total_step);
+        bool converged = perform_Newton_Raphson(maxIter, tol, step_end);
 
         if (converged)
         {
