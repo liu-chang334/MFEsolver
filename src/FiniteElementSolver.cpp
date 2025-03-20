@@ -36,7 +36,7 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     std::unordered_map<std::string, double> matParams = {
         {"E", materialData(0, 0)},
         {"nu", materialData(0, 1)},
-        {"sigma_y", 205.00},
+        {"sigma_y", 500.00},
         {"H", 0.00}
     };
 

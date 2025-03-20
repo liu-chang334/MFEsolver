@@ -1,5 +1,4 @@
 #include "../include/C3D8.h"
-
 /**
  * @brief Constructor for the C3D8 class.
  *

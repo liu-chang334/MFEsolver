@@ -1,9 +1,10 @@
 #ifndef C3D8_H
 #define C3D8_H
 
-#include "ElemBase.h"
 #include <Eigen/Sparse>
 #include <vector>
+#include "ElemBase.h"
+#include "Math.h"
 
 #include "../material/LinearElastic.h"
 #include "../material/IdealElastoplastic.h"
@@ -21,6 +22,7 @@ struct MaterialPoint
 
     Eigen::VectorXd strain;
     Eigen::VectorXd stress;
+    double epstrain;
 
     MaterialPoint(){
         r = s = t = 0.0;
@@ -32,6 +34,7 @@ struct MaterialPoint
 
         strain = Eigen::VectorXd::Zero(6);
         stress = Eigen::VectorXd::Zero(6);
+        epstrain = 0.0;
     }
 };
 
