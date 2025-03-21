@@ -36,20 +36,17 @@ void IsotropicHarden::updateStressAndTangent(const Eigen::VectorXd &dstrain, Mat
     // 2. compute the elastic factor
     double f = computerSecondInvariant3x3(mp.stress);
     double trial_f = computerSecondInvariant3x3(trial_stress);
-    double yield_stress = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
-    double Ep = computePlasticModulus(mp.epstrain, hardeningCurve_);
-    double k = yield_stress * yield_stress / 3.0;
+    double yield_stress_t = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
+    double Ep_t = computePlasticModulus(mp.epstrain, hardeningCurve_);
+    double k = yield_stress_t * yield_stress_t / 3.0;
     double m; // 0 <= m < 1
 
-    if (trial_f - k <= 0)
-    {
+    if (trial_f - k <= 0){ // elastic behavior
         m = 1.0;
         mp.strain += dstrain;
         mp.stress = trial_stress;
         return;
-
-    } else if (trial_f - k > 0 && f - k < 0)
-    {
+    } else if (trial_f - k > 0 && f - k < 0){ // elastic and elastic-plastic behavior
         Eigen::VectorXd dstress_dev = computeDeviatoric(dstress);
         Eigen::VectorXd stress_dev = computeDeviatoric(mp.stress);
         double a0, a1, a2;
@@ -57,56 +54,64 @@ void IsotropicHarden::updateStressAndTangent(const Eigen::VectorXd &dstrain, Mat
         a1 = stress_dev.dot(dstress_dev);
         a2 = dstress_dev.dot(dstress_dev);
         m = (-1 * a1 + sqrt(a1 * a1 - 4 * a0 * a2)) / (2 * a2);
-
-    } else if (trial_f - k > 0 && std::abs(f - k) < 1e-9){
+    } else if (trial_f - k > 0 && std::abs(f - k) < 1e-9){  // elastic-plastic behavior
         m = 0.0;
     }
 
-    // 3. compute the elastic increment of stress and elastic plastic increment of strain
+    // 3. accumulate elastic part to the material point
+    mp.strain += m * dstrain;
+    mp.stress += m * dstress;
     Eigen::VectorXd dstrain_ep = (1 - m) * dstrain;
-    Eigen::VectorXd stress_ep_start = mp.stress + m * dstress;
-    Eigen::VectorXd stress_ep_start_dev = computeDeviatoric(stress_ep_start);
 
+    // 4. sub-increment method: tangential predict and then return along radial direction
+    // 4.1 determine the number of sub-increments
+    Eigen::VectorXd stress_dev = computeDeviatoric(mp.stress); 
     Eigen::VectorXd df_dsigma = Eigen::VectorXd::Zero(6);
-    df_dsigma << stress_ep_start_dev(0), stress_ep_start_dev(1), stress_ep_start_dev(2),
-        2 * stress_ep_start_dev(3), 2 * stress_ep_start_dev(4), 2 * stress_ep_start_dev(5);
+    df_dsigma << stress_dev(0), stress_dev(1), stress_dev(2), 2 * stress_dev(3), 2 * stress_dev(4), 2 * stress_dev(5);
+    double dlambda = (df_dsigma * D_ * dstrain_ep.transpose())(0,0) / ((df_dsigma * D_ * df_dsigma.transpose())(0,0) + yield_stress_t * yield_stress_t * Ep_t * 4.0 / 9.0);
+    Eigen::VectorXd dstrain_ep_dev = computeDeviatoric(dstrain_ep);
+    Eigen::VectorXd dstrain_e_dev = dstrain_e_dev - dlambda * df_dsigma;
+    double eq_dstrain_e_dev = sqrt(dstrain_e_dev.dot(dstrain_e_dev) * 2 / 3);
+    double M = 0.0002;
+    int num_increments = static_cast<int>(std::ceil(1.0 + (eq_dstrain_e_dev / M)));
+    Eigen::VectorXd dstrain_ep_i = dstrain_ep / num_increments;
 
-    Dp_ = (D_ * df_dsigma.transpose() * df_dsigma * D_) / 
-        ((df_dsigma * D_ * df_dsigma.transpose())(0,0) + yield_stress * yield_stress * Ep * 4.0 / 9.0);
+    for (int i = 0; i < num_increments; i++)
+    {
+        double yield_stress_i = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
+        double Ep_i = computePlasticModulus(mp.epstrain, hardeningCurve_);
 
+        // 4.2 compute the elastic-plastic matrix
+        Eigen::VectorXd stress_dev_i = computeDeviatoric(mp.stress); 
+        Eigen::VectorXd df_dsigma_i = Eigen::VectorXd::Zero(6);
+        df_dsigma_i << stress_dev_i(0), stress_dev_i(1), stress_dev_i(2), 2 * stress_dev_i(3), 2 * stress_dev_i(4), 2 * stress_dev_i(5);
+        Dp_ = (D_ * df_dsigma_i.transpose() * df_dsigma_i * D_) / ((df_dsigma_i * D_ * df_dsigma_i.transpose())(0,0) + yield_stress_i * yield_stress_i * Ep_i * 4.0 / 9.0);
+        Eigen::MatrixXd Dep = D_ - Dp_;
+
+        // 4.3 to predict the stress increment along tangent direction
+        Eigen::VectorXd dstress_ep_i = Dep * dstrain_ep_i;
+        double dlambda_i = (df_dsigma_i * D_ * dstrain_ep_i.transpose())(0,0) / ((df_dsigma_i * D_ * df_dsigma_i.transpose())(0,0) + yield_stress_i * yield_stress_i * Ep_i * 4.0 / 9.0);
+        double depstrain_i = 2 / 3 * dlambda_i * yield_stress_i;
+        Eigen::VectorXd stress_pre = mp.stress + dstress_ep_i;
+        mp.epstrain += depstrain_i;
+        mp.strain += dstrain_ep_i;
+
+        // 4.4 return the stress along radial direction
+        Eigen::VectorXd stress_pre_dev = computeDeviatoric(stress_pre);
+        double yield_stress_i = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
+        double r = sqrt((2 / 3) * yield_stress_i * yield_stress_i / (stress_pre_dev.dot(stress_pre_dev)));
+        mp.stress = r * stress_pre;
+    }
+
+    // 5. update the tangent matrix
+    double yield_stress = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
+    double Ep = computePlasticModulus(mp.epstrain, hardeningCurve_);
+    Eigen::VectorXd stress_dev = computeDeviatoric(mp.stress); 
+    Eigen::VectorXd df_dsigma = Eigen::VectorXd::Zero(6);
+    df_dsigma << stress_dev(0), stress_dev(1), stress_dev(2), 2 * stress_dev(3), 2 * stress_dev(4), 2 * stress_dev(5);
+    Dp_ = (D_ * df_dsigma.transpose() * df_dsigma * D_) / ((df_dsigma * D_ * df_dsigma.transpose())(0,0) + yield_stress * yield_stress * Ep * 4.0 / 9.0);
     Eigen::MatrixXd Dep = D_ - Dp_;
-
-    // 4. predict along the tangent direction
-    Eigen::VectorXd dstress_ep = Dep * dstrain_ep;
-
-    double dlambda = (df_dsigma * D_ * dstrain.transpose())(0,0) /
-        ((df_dsigma * D_ * df_dsigma.transpose())(0,0) + yield_stress * yield_stress * Ep * 4.0 / 9.0);
-
-    double depstrain = 2 / 3 * dlambda * yield_stress;
-
-    Eigen::VectorXd stress_pre = mp.stress + m * dstress + dstress_ep;
-    double epstrain = mp.epstrain + depstrain;
-
-    // 5. return along the radial direction
-    Eigen::VectorXd stress_pre_dev = computeDeviatoric(stress_pre);
-    double yield_stress_end = interpolateHardeningStress(epstrain, hardeningCurve_);
-    double r = sqrt((2 / 3) * yield_stress_end * yield_stress_end / (stress_pre_dev.dot(stress_pre_dev)));
-
-    // 6. update the material point
-    mp.strain += dstrain;
-    mp.stress = r * stress_pre;
-    mp.epstrain = epstrain;
-
-    // 7. update the tangent matrix
-    double Ep_end = computePlasticModulus(epstrain, hardeningCurve_);
-    Eigen::VectorXd stress_end_dev = computeDeviatoric(mp.stress);
-    Eigen::VectorXd df_dsigma_end = Eigen::VectorXd::Zero(6);
-    df_dsigma_end << stress_end_dev(0), stress_end_dev(1), stress_end_dev(2),
-        2 * stress_end_dev(3), 2 * stress_end_dev(4), 2 * stress_end_dev(5);
-    Eigen::MatrixXd Dp_end = (D_ * df_dsigma_end.transpose() * df_dsigma_end * D_) /
-            ((df_dsigma_end * D_ * df_dsigma_end.transpose())(0,0) + yield_stress_end * yield_stress_end * Ep_end * 4.0 / 9.0);
-
-    tangent = D_ - Dp_end;
+    tangent = Dep;
 }
 
 
