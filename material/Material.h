@@ -7,6 +7,7 @@
 #include <string>
 
 struct MaterialPoint; // Forward declaration
+struct MaterialData; // Forward declaration
 
 class Material
 {
@@ -19,7 +20,7 @@ public:
      * @param[in] parameters: The material parameters
      * @note The material parameters are stored in a std::unordered_map<std::string, double>
      */
-    virtual void setMaterialParameters(const std::unordered_map<std::string, double>& parameters) = 0;
+    virtual void setMaterialParameters(const MaterialData& matdata) = 0;
 
     /**
      * @brief Update the stress and tangent

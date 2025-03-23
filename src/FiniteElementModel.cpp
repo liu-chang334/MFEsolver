@@ -141,6 +141,9 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
 
     while (std::getline(file, line)) {
         if (line.empty()) continue;// Skip empty lines
+        if (line[0] == '*' && line[1] == '*') continue; // Skip comment lines
+        if (line.rfind("*Step", 0) == 0) continue; // not implemented yet
+        if (line.rfind("*Static", 0) == 0) continue; // not implemented yet
 
         if (line[0] == '*' && outsideMaterialBlock && !tempMat.name.empty()) {
             femModel.addMaterial(tempMat);
@@ -237,12 +240,14 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
             } 
         } else if (inSection[2] && readingElastic) { // parse material data such as: 2.0e11, 0.3
             iss >> tempMat.E >> comma >> tempMat.nu;
+            tempMat.type = "LinearElastic";
 
         } else if (inSection[2] && readingPlastic) {
             double stress, epstrain;
             if (iss >> stress >> comma >> epstrain) {
                tempMat.HardeningCurve.emplace_back(stress, epstrain); 
             }
+            tempMat.type = "ElasticPlastic";
         } else if (inSection[3]) { // parse load data such as: Nset-1, 1, 1.0e6
             std::string nodeSet;
             int dofid;
@@ -322,6 +327,7 @@ void FiniteElementModel::printMaterialInfo() const {
     std::cout << "======== Material Information ========" << std::endl;
     for (const auto& mat : Materials) {
         std::cout << "Material Name: " << mat.name << std::endl;
+        std::cout << "Material Type: " << mat.type << std::endl;
         std::cout << "  Young's Modulus (E): " << mat.E << std::endl;
         std::cout << "  Poisson's Ratio (nu): " << mat.nu << std::endl;
 

@@ -13,25 +13,24 @@ int main()
 {
     // read FEM data from inp
     std::string filefolder1 = std::filesystem::current_path().string(); 
-    std::string filename1 = "Job-elastic.inp";
+    std::string filename1 = "Job-elastic.inp";    // dogbone2, Job-elastic, Job-elasticplastic
     std::filesystem::path filepath1 = filefolder1 + "\\.." + "\\.." + "\\abaqus" + "\\" + filename1;
     FiniteElementModel feaModel;
     ABAQUSFEMReader(filepath1, feaModel);
 
-    std::cout << "MaterialType: " << feaModel.MaterialType << std::endl;  // "LinearElastic"
     // print Material Data
     feaModel.printMaterialInfo();
 
-    // // initialize the FEA solver and solve
-    // FiniteElementSolver feaSolver(feaModel);
-    // // feaSolver.solve_linearelastic();
-    // double step_size = 1.00;  // (1 / step_size) must be an integer
-    // int maxIter = 10;  
-    // feaSolver.solve_adaptive_nonlinear(step_size, maxIter);
+    // initialize the FEA solver and solve
+    FiniteElementSolver feaSolver(feaModel);
+    // feaSolver.solve_linearelastic();
+    double step_size = 1.00;  // (1 / step_size) must be an integer
+    int maxIter = 10;  
+    feaSolver.solve_adaptive_nonlinear(step_size, maxIter);
 
-    // // post-process
-    // FEDataModelPost feaModelPost(feaModel);
-    // feaModelPost.FEdataPlotScalar("S", 11);
+    // post-process
+    FEDataModelPost feaModelPost(feaModel);
+    feaModelPost.FEdataPlotScalar("S", 11);
     // feaModelPost.FEdataPlotScalar("S_princ", 1);
 
     // std::vector<double> vector = {1, 2, 3, 4, 5, 6};

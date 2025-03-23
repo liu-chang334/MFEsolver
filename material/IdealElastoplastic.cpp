@@ -1,22 +1,11 @@
 #include "IdealElastoplastic.h"
 
-void IdealElastoplastic::setMaterialParameters(const std::unordered_map<std::string, double>& parameters)
+void IdealElastoplastic::setMaterialParameters(const MaterialData& matdata)
 {
-    materialParams_ = parameters;
-
-    if (materialParams_.find("E") == materialParams_.end() ||
-        materialParams_.find("nu") == materialParams_.end() ||
-        materialParams_.find("sigma_y") == materialParams_.end() ||
-        materialParams_.find("H") == materialParams_.end())
-    {
-        std::cerr << "Material parameters not found" << std::endl;
-        return; 
-    }
-
-    E_ = materialParams_["E"];
-    nu_ = materialParams_["nu"];
-    sigma_y_ = materialParams_["sigma_y"];
-    H_ = materialParams_["H"];
+    E_ = matdata.E;
+    nu_ = matdata.nu;
+    // H_ = matdata.H;
+    // sigma_y_ = matdata.sigma_y;
 
     double lambda_ = E_ * nu_ / ((1.0 + nu_) * (1.0 - 2.0 * nu_));
     double mu_ = E_ / (2.0 * (1.0 + nu_));

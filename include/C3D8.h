@@ -8,6 +8,7 @@
 
 #include "../material/LinearElastic.h"
 #include "../material/IdealElastoplastic.h"
+#include "../material/IsotropicHarden.h"
 
 
 struct MaterialPoint

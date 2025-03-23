@@ -12,6 +12,7 @@
 
 struct MaterialData {
     std::string name;
+    std::string type;
     double E = 0.0;
     double nu = 0.0;
     std::vector<std::pair<double, double>> HardeningCurve; // σ, ε
@@ -65,8 +66,6 @@ public:
     Eigen::MatrixXd Node;
     Eigen::MatrixXi Element;
     std::vector<MaterialData> Materials;
-    // std::string MaterialType = "LinearElastic";
-    std::string MaterialType = "IdealElastoplastic";  // in checking
     Eigen::MatrixXd Force;
     Eigen::MatrixXd Constraint;
     std::unordered_map<std::string, Eigen::VectorXi> Nsets;

@@ -14236,9 +14236,12 @@
 ** 
 ** MATERIALS
 ** 
-*Material, name=C60_elastic
+*Material, name=C60_elastoplastic
 *Elastic
 36000., 0.2
+*Plastic
+10.,    0.
+15., 0.001
 ** ----------------------------------------------------------------
 ** 
 ** STEP: Step-1

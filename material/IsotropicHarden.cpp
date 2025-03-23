@@ -1,18 +1,10 @@
 #include "IsotropicHarden.h"
 
-void IsotropicHarden::setMaterialParameters(const std::unordered_map<std::string, double>& parameters)
+void IsotropicHarden::setMaterialParameters(const MaterialData& matdata)
 {
-    materialParams_ = parameters;
-
-    if (materialParams_.find("E") == materialParams_.end() ||
-        materialParams_.find("nu") == materialParams_.end())
-    {
-        std::cerr << "Material parameters not found" << std::endl;
-        return; 
-    }
-
-    E_ = materialParams_["E"];
-    nu_ = materialParams_["nu"];
+    E_ = matdata.E;
+    nu_ = matdata.nu;
+    hardeningCurve_ = matdata.HardeningCurve;
 
     double lambda_ = E_ * nu_ / ((1.0 + nu_) * (1.0 - 2.0 * nu_));
     double mu_ = E_ / (2.0 * (1.0 + nu_));

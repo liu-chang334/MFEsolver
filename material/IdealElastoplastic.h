@@ -3,6 +3,7 @@
 
 #include "Material.h"
 #include "../include/C3D8.h"
+#include "../include/FiniteElementModel.h"
 
 
 
@@ -17,7 +18,7 @@ public:
      * @param[in] parameters: The material parameters
      * @note The material parameters are stored in a std::unordered_map<std::string, double>
      */
-    void setMaterialParameters(const std::unordered_map<std::string, double>& parameters) override;
+    void setMaterialParameters(const MaterialData& matdata) override;
 
 
     /**

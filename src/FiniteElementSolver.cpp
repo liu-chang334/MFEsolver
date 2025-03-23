@@ -19,7 +19,6 @@
 FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : feModel(feModel){
     const Eigen::MatrixXd& Node = feModel.Node;
     const Eigen::MatrixXi& Element = feModel.Element;
-    // const Eigen::MatrixXd& materialData = feModel.Material;
     
     int numNodes = static_cast<int>(Node.rows());
     int numElements = static_cast<int>(Element.rows());
@@ -33,14 +32,6 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     initializeExternalForce(F_);
 
     initializematerial();
-    // std::unordered_map<std::string, double> matParams = {
-    //     {"E", materialData(0, 0)},
-    //     {"nu", materialData(0, 1)},
-    //     {"sigma_y", 500.00},
-    //     {"H", 0.00}
-    // };
-
-    // material_->setMaterialParameters(matParams);
     
     elements.reserve(numElements);
 
@@ -57,9 +48,6 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
         C3D8 elem(i + 1, material_);
         elem.setNodes(elemnode, elemnodeCoor);
         elem.initMaterialPoints();
-
-        // elem.setMaterial(mat);
-        // elem->setMaterialByYoungPoisson(E, nu);
         elements.push_back(elem);
     }   
 }
@@ -71,11 +59,15 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
 
 void FiniteElementSolver::initializematerial()
 {
-    const std::string& matType = feModel.MaterialType;
+    const std::string& matType = feModel.Materials[0].type;  // FIXME: only one material is supported for now
 
     if (matType == "LinearElastic") {material_ = std::make_shared<LinearElastic>();}
     else if (matType == "IdealElastoplastic") {material_ = std::make_shared<IdealElastoplastic>();}
+    else if (matType == "ElasticPlastic") {material_ = std::make_shared<IsotropicHarden>();}
     else {std::cerr << "Error: Material type not supported" << std::endl; exit(1);}
+
+    MaterialData matData = feModel.Materials[0];  // FIXME: only one material is supported for now
+    material_->setMaterialParameters(matData);
 }
 
 
