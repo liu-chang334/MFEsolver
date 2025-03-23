@@ -39,4 +39,8 @@ public:
 
 };
 
+
+double interpolateHardeningStress(double plasticStrain, const std::vector<std::pair<double, double>>& curve);
+double computePlasticModulus(double plasticStrain, const std::vector<std::pair<double, double>> &curve);
+
 #endif

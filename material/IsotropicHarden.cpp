@@ -98,7 +98,7 @@ void IsotropicHarden::updateStressAndTangent(const Eigen::VectorXd &dstrain, Mat
 
         // 4.4 return the stress along radial direction
         Eigen::VectorXd stress_pre_dev = computeDeviatoric(stress_pre);
-        double yield_stress_i = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
+        yield_stress_i = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
         double r = sqrt((2 / 3) * yield_stress_i * yield_stress_i / (stress_pre_dev.dot(stress_pre_dev)));
         mp.stress = r * stress_pre;
     }
@@ -106,8 +106,7 @@ void IsotropicHarden::updateStressAndTangent(const Eigen::VectorXd &dstrain, Mat
     // 5. update the tangent matrix
     double yield_stress = interpolateHardeningStress(mp.epstrain, hardeningCurve_);
     double Ep = computePlasticModulus(mp.epstrain, hardeningCurve_);
-    Eigen::VectorXd stress_dev = computeDeviatoric(mp.stress); 
-    Eigen::VectorXd df_dsigma = Eigen::VectorXd::Zero(6);
+    stress_dev = computeDeviatoric(mp.stress); 
     df_dsigma << stress_dev(0), stress_dev(1), stress_dev(2), 2 * stress_dev(3), 2 * stress_dev(4), 2 * stress_dev(5);
     Dp_ = (D_ * df_dsigma.transpose() * df_dsigma * D_) / ((df_dsigma * D_ * df_dsigma.transpose())(0,0) + yield_stress * yield_stress * Ep * 4.0 / 9.0);
     Eigen::MatrixXd Dep = D_ - Dp_;
