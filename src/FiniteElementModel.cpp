@@ -25,19 +25,8 @@ void FiniteElementModel::addElement(const std::vector<int>& element) {
     }
 }
 
-/**
- * @brief Expands the Material matrix by one row and assigns the provided material properties.
- *
- * @param[in] material A vector of size 2 containing the material properties [E, A].
- *                 - E: Young's modulus.
- *                 - A: Cross-sectional area.
- * @note Currently, this project only considers elastic material properties,
- *      but it may be extended in the future to support more complex material models.
- */
-void FiniteElementModel::addMaterial(const std::vector<double>& material) {
-    Eigen::Index currentRows = Material.rows();
-    Material.conservativeResize(currentRows + 1, 2);
-    Material.row(currentRows) = Eigen::Vector2d(material[0], material[1]);
+void FiniteElementModel::addMaterial(const MaterialData& mat) {
+    Materials.push_back(mat);
 }
 
 /**
@@ -145,9 +134,21 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
     std::string currentSetName;  // Store the current set name
     std::string line; // Store the current line
 
-    while (std::getline(file, line)) // Read each line
-    {
+    MaterialData tempMat;
+    bool readingElastic = false;
+    bool readingPlastic = false;
+    bool outsideMaterialBlock = false;
+
+    while (std::getline(file, line)) {
         if (line.empty()) continue;// Skip empty lines
+
+        if (line[0] == '*' && outsideMaterialBlock && !tempMat.name.empty()) {
+            femModel.addMaterial(tempMat);
+            tempMat = MaterialData();
+            outsideMaterialBlock = false;
+            readingElastic = false;
+            readingPlastic = false;
+        }
 
         // Check section markers
         if (line.rfind("*Node", 0) == 0) {
@@ -159,15 +160,35 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
         } else if (line.rfind("*Material", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[2] = true;
+            readingElastic = false;
+            readingPlastic = false;
+            outsideMaterialBlock = false;
+
+            size_t namePos = findCaseInsensitive(line, "name=");
+            if (namePos != std::string::npos) {
+                tempMat.name = line.substr(namePos + 5);
+                tempMat.name.erase(remove(tempMat.name.begin(), tempMat.name.end(), ','), tempMat.name.end()); 
+            } else {
+                std::cerr << "Error: Material name not specified in the line: " << line << std::endl;
+            }
+        } else if (line.rfind("*Elastic", 0) == 0) {
+            readingElastic = true;
+            readingPlastic = false; 
+        } else if (line.rfind("*Plastic", 0) == 0) {
+            readingElastic = false;
+            readingPlastic = true; 
         } else if (line.rfind("*Load", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[3] = true;
+            outsideMaterialBlock = true;
         } else if (line.rfind("*Boundary", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[4] = true;
+            outsideMaterialBlock = true;
         } else if (line.rfind("*Nset", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[5] = true; 
+            outsideMaterialBlock = true;
             // size_t namePos = line.find("Nset=");
             size_t namePos = findCaseInsensitive(line, "Nset=");
             if (namePos != std::string::npos) {
@@ -180,6 +201,7 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
         } else if (line.rfind("*Elset", 0) == 0) {
             std::fill(std::begin(inSection), std::end(inSection), false);
             inSection[6] = true; 
+            outsideMaterialBlock = true;
             // size_t namePos = line.find("Elset=");
             size_t namePos = findCaseInsensitive(line, "Elset=");
             if (namePos!= std::string::npos) {
@@ -213,10 +235,13 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
             if (count == 8) { 
                 femModel.addElement(nodeIDsofelement);
             } 
-        } else if (inSection[2]) { // parse material data such as: 2.0e11, 0.3
-            std::vector<double> material(2);
-            if (iss >> material[0] >> comma >> material[1]) {
-                femModel.addMaterial(material);
+        } else if (inSection[2] && readingElastic) { // parse material data such as: 2.0e11, 0.3
+            iss >> tempMat.E >> comma >> tempMat.nu;
+
+        } else if (inSection[2] && readingPlastic) {
+            double stress, epstrain;
+            if (iss >> stress >> comma >> epstrain) {
+               tempMat.HardeningCurve.emplace_back(stress, epstrain); 
             }
         } else if (inSection[3]) { // parse load data such as: Nset-1, 1, 1.0e6
             std::string nodeSet;
@@ -268,6 +293,11 @@ void ABAQUSFEMReader(const std::filesystem::path& filepath, FiniteElementModel& 
             }
         }
     }
+
+    if (outsideMaterialBlock && !tempMat.name.empty()) {
+        femModel.addMaterial(tempMat);
+    }
+
     file.close();
 }
 
@@ -286,4 +316,25 @@ void FiniteElementModel::getNodesIDofElement(int elementID, Eigen::VectorXi& nod
     }
     const Eigen::VectorXi& elemnode = Element.row(elementID-1);
     nodeIDs = elemnode;
+}
+
+void FiniteElementModel::printMaterialInfo() const {
+    std::cout << "======== Material Information ========" << std::endl;
+    for (const auto& mat : Materials) {
+        std::cout << "Material Name: " << mat.name << std::endl;
+        std::cout << "  Young's Modulus (E): " << mat.E << std::endl;
+        std::cout << "  Poisson's Ratio (nu): " << mat.nu << std::endl;
+
+        if (!mat.HardeningCurve.empty()) {
+            std::cout << "  Plastic Stress-Strain Curve:" << std::endl;
+            std::cout << "    sigma       epsilon" << std::endl;
+            for (const auto& [sigma, epsilon] : mat.HardeningCurve) {
+                std::cout << "    " << sigma << "        " << epsilon << std::endl;
+            }
+        } else {
+            std::cout << "  (Linear Elastic Material)" << std::endl;
+        }
+
+        std::cout << "-------------------------------------" << std::endl;
+    }
 }

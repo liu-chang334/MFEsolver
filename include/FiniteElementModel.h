@@ -10,6 +10,13 @@
 #include <sstream>
 #include <cstdlib>
 
+struct MaterialData {
+    std::string name;
+    double E = 0.0;
+    double nu = 0.0;
+    std::vector<std::pair<double, double>> HardeningCurve; // σ, ε
+};
+
 /**
  * @class FiniteElementModel
  * @brief Represents a finite element model with associated data structures.
@@ -57,7 +64,7 @@ class FiniteElementModel {
 public:
     Eigen::MatrixXd Node;
     Eigen::MatrixXi Element;
-    Eigen::MatrixXd Material;
+    std::vector<MaterialData> Materials;
     // std::string MaterialType = "LinearElastic";
     std::string MaterialType = "IdealElastoplastic";  // in checking
     Eigen::MatrixXd Force;
@@ -68,13 +75,14 @@ public:
 public:
     void addNode(const std::vector<double>& node);
     void addElement(const std::vector<int>& element);
-    void addMaterial(const std::vector<double>& material);
+    void addMaterial(const MaterialData& mat);
     void addLoad(const std::string& name, const int& dofid, const double& value);
     void addConstraint(const std::string& name, const int& dofid, const double& value);
     void addNset(const std::string& nsetName, const std::vector<int>& nodeIDs);
     void addElset(const std::string& esetName, const std::vector<int>& elementIDs);
     void printModelInfo();
     void getNodesIDofElement(int elementID, Eigen::VectorXi &nodeIDs) const;
+    void printMaterialInfo() const;
 };
 
 

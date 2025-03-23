@@ -19,7 +19,7 @@
 FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : feModel(feModel){
     const Eigen::MatrixXd& Node = feModel.Node;
     const Eigen::MatrixXi& Element = feModel.Element;
-    const Eigen::MatrixXd& materialData = feModel.Material;
+    // const Eigen::MatrixXd& materialData = feModel.Material;
     
     int numNodes = static_cast<int>(Node.rows());
     int numElements = static_cast<int>(Element.rows());
@@ -33,14 +33,14 @@ FiniteElementSolver::FiniteElementSolver(const FiniteElementModel& feModel) : fe
     initializeExternalForce(F_);
 
     initializematerial();
-    std::unordered_map<std::string, double> matParams = {
-        {"E", materialData(0, 0)},
-        {"nu", materialData(0, 1)},
-        {"sigma_y", 500.00},
-        {"H", 0.00}
-    };
+    // std::unordered_map<std::string, double> matParams = {
+    //     {"E", materialData(0, 0)},
+    //     {"nu", materialData(0, 1)},
+    //     {"sigma_y", 500.00},
+    //     {"H", 0.00}
+    // };
 
-    material_->setMaterialParameters(matParams);
+    // material_->setMaterialParameters(matParams);
     
     elements.reserve(numElements);
 

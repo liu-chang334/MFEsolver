@@ -18,17 +18,21 @@ int main()
     FiniteElementModel feaModel;
     ABAQUSFEMReader(filepath1, feaModel);
 
-    // initialize the FEA solver and solve
-    FiniteElementSolver feaSolver(feaModel);
-    // feaSolver.solve_linearelastic();
-    double step_size = 1.00;  // (1 / step_size) must be an integer
-    int maxIter = 10;  
-    feaSolver.solve_adaptive_nonlinear(step_size, maxIter);
+    std::cout << "MaterialType: " << feaModel.MaterialType << std::endl;  // "LinearElastic"
+    // print Material Data
+    feaModel.printMaterialInfo();
 
-    // post-process
-    FEDataModelPost feaModelPost(feaModel);
-    feaModelPost.FEdataPlotScalar("S", 11);
-    feaModelPost.FEdataPlotScalar("S_princ", 1);
+    // // initialize the FEA solver and solve
+    // FiniteElementSolver feaSolver(feaModel);
+    // // feaSolver.solve_linearelastic();
+    // double step_size = 1.00;  // (1 / step_size) must be an integer
+    // int maxIter = 10;  
+    // feaSolver.solve_adaptive_nonlinear(step_size, maxIter);
+
+    // // post-process
+    // FEDataModelPost feaModelPost(feaModel);
+    // feaModelPost.FEdataPlotScalar("S", 11);
+    // feaModelPost.FEdataPlotScalar("S_princ", 1);
 
     // std::vector<double> vector = {1, 2, 3, 4, 5, 6};
     // std::vector<double> result = computeEigenvalues3x3(vector);
